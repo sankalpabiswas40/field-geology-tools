@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Field Geology Map</title>
+  <meta name="theme-color" content="#1f2a24">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Field Map">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <div class="toolbar">
+        <button id="load-dem" class="btn" type="button">Load DEM</button>
+        <button id="locate" class="btn" type="button">My location</button>
+        <input id="dem-file" type="file" hidden>
+      </div>
+      <div id="message" class="message" role="status" aria-live="polite">Starting…</div>
+      <dl id="location-info" class="readout" hidden></dl>
+      <details id="dem-details" class="details" hidden>
+        <summary>DEM details</summary>
+        <dl id="dem-info" class="readout"></dl>
+      </details>
+    </aside>
+    <main id="map" class="map" aria-label="Map"></main>
+  </div>
+
+  <!-- Libraries (offline copies in /vendor). They create the globals L and GeoTIFF. -->
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="vendor/geotiff/geotiff.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
