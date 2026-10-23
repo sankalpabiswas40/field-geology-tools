@@ -116,11 +116,15 @@
       <label class="field">Station ID
         <input name="stationId" type="text" autocapitalize="characters" spellcheck="false">
       </label>
+      <button id="f-repeat" class="btn secondary" type="button">Repeat last (feature type and lithology)</button>
       <p id="f-datetime" class="field-note"></p>
 
       <fieldset class="group">
         <legend>Location (WGS84)</legend>
-        <button id="f-use-location" class="btn secondary" type="button">Use my location</button>
+        <div class="button-row">
+          <button id="f-use-location" class="btn secondary" type="button">Use my location</button>
+          <button id="f-place-on-map" class="btn secondary" type="button">Place on map</button>
+        </div>
         <p id="f-location-note" class="field-note"></p>
         <div class="row">
           <label class="field">Latitude
@@ -187,6 +191,21 @@
         </div>
         <output id="f-dipdir" class="dipdir" aria-live="polite"></output>
       </fieldset>
+
+      <div id="f-compass-box" class="compass-box">
+        <svg id="f-compass" viewBox="0 0 120 120" width="132" height="132" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" fill="#142019" stroke="#6d8577" stroke-width="2"/>
+          <g stroke="#6d8577" stroke-width="2">
+            <line x1="60" y1="8" x2="60" y2="16"/><line x1="112" y1="60" x2="104" y2="60"/>
+            <line x1="60" y1="112" x2="60" y2="104"/><line x1="8" y1="60" x2="16" y2="60"/>
+          </g>
+          <g font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#f1f4ef" text-anchor="middle" dominant-baseline="central">
+            <text x="60" y="24">N</text><text x="96" y="60">E</text><text x="60" y="96">S</text><text x="24" y="60">W</text>
+          </g>
+          <g id="f-compass-arrow"></g>
+        </svg>
+        <p id="f-compass-label" class="compass-label"></p>
+      </div>
 
       <fieldset class="group">
         <legend>Younging direction known?</legend>

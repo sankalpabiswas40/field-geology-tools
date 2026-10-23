@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeAzimuth, dipDirectionFromStrike, strikeFromDipDirection, parseNumber,
-  checkStrike, checkDip, formatAzimuth, formatAttitude, strikeDipSymbol, checkTrend, checkPlunge, lineationSymbol,
+  checkStrike, checkDip, formatAzimuth, formatAttitude, strikeDipSymbol, checkTrend, checkPlunge, lineationSymbol, compassArrow,
 } from '../js/geo/attitude.js';
 
 test('right-hand rule: dip direction = strike + 90°', () => {
@@ -126,4 +126,14 @@ test('lineation arrow points along the trend', () => {
   const sw = lineationSymbol(225, 10, { size: 40, length: 10, headLength: 4 });
   assert.ok(sw.head[0][0] < 20 && sw.head[0][1] > 20, 'tip to the south-west');
   assert.equal(lineationSymbol(123, 90).kind, 'vertical');
+});
+
+test('compass arrow points to the dip direction', () => {
+  const east = compassArrow(90, { size: 120, radius: 40 });
+  assert.ok(near(east.tip[0], 100) && near(east.tip[1], 60), 'east = right');
+  assert.ok(east.tail[0] < 60, 'tail on the opposite side');
+  const south = compassArrow(180, { size: 120, radius: 40 });
+  assert.ok(near(south.tip[0], 60) && near(south.tip[1], 100), 'south = down');
+  const nw = compassArrow(315, { size: 120, radius: 40 });
+  assert.ok(nw.tip[0] < 60 && nw.tip[1] < 60, 'north-west = up and left');
 });

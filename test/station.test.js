@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkStationInput, nextStationId, localTimeText, normalizeStation, nameSuggestions } from '../js/geo/station.js';
+import {
+  checkStationInput, nextStationId, localTimeText, normalizeStation, nameSuggestions, dayStationId, lastRealStation, localDayNumber,
+} from '../js/geo/station.js';
 
 const good = {
   stationId: 'S001', latitude: '46.5444', longitude: '8.0833', accuracy: '6',
@@ -118,6 +120,8 @@ test('old-format stations survive: missing new fields are added, nothing is chan
   for (const [k, v] of Object.entries(frozen)) assert.deepEqual(n[k], v, `field ${k} kept`);
   assert.equal(n.unitUpper, null);
   assert.equal(n.isTest, false);
+  assert.equal(n.locationSource, null, 'unknown source is not guessed');
+  assert.equal(n.trend, null);
   assert.deepEqual(old, frozen, 'the original record object is not modified');
   // Values that are already there win over defaults.
   assert.equal(normalizeStation({ ...old, isTest: true }).isTest, true);
@@ -155,4 +159,43 @@ test('lineations use trend/plunge and a kind, never strike/dip', () => {
   const plane = checkStationInput({ ...good, trend: '10', plunge: '10', lineationType: 'slickenline' });
   assert.equal(plane.values.trend, null);
   assert.equal(plane.values.lineationType, null);
+});
+
+const IST = 330; // India, UTC+05:30
+const st = (id, iso, extra = {}) => ({ stationId: id, createdAt: iso, tzOffsetMinutes: IST, ...extra });
+
+test('day-based station IDs: D<day>-<count>', () => {
+  // No real stations yet: today is day 1.
+  assert.equal(dayStationId([], '2026-11-02T04:00:00Z', IST), 'D1-01');
+  // Test stations do not count.
+  assert.equal(dayStationId([st('S01', '2026-10-20T04:00:00Z', { isTest: true })], '2026-11-02T04:00:00Z', IST), 'D1-01');
+  const field = [
+    st('D1-01', '2026-11-02T03:00:00Z'), st('D1-02', '2026-11-02T05:00:00Z'),
+    st('D2-01', '2026-11-03T04:00:00Z'),
+  ];
+  assert.equal(dayStationId(field, '2026-11-02T10:00:00Z', IST), 'D1-03', 'third station on day 1');
+  assert.equal(dayStationId(field, '2026-11-03T08:00:00Z', IST), 'D2-02');
+  assert.equal(dayStationId(field, '2026-11-05T08:00:00Z', IST), 'D4-01', 'a rest day still counts as a day');
+});
+
+test('day IDs use the LOCAL date, not UTC', () => {
+  // 2026-11-02 20:00 UTC is already 3 November in India (01:30 local).
+  const field = [st('D1-01', '2026-11-02T04:00:00Z')];
+  assert.equal(dayStationId(field, '2026-11-02T20:00:00Z', IST), 'D2-01');
+  assert.equal(localDayNumber('2026-11-02T20:00:00Z', IST) - localDayNumber('2026-11-02T04:00:00Z', IST), 1);
+});
+
+test('day IDs skip numbers already used (e.g. after editing an ID)', () => {
+  const field = [st('D1-01', '2026-11-02T03:00:00Z'), st('D1-02', '2026-11-01T03:00:00Z', { isTest: true, stationId: 'D1-02' })];
+  assert.equal(dayStationId(field, '2026-11-02T05:00:00Z', IST), 'D1-03');
+});
+
+test('"Repeat last" uses the newest real station, never test data', () => {
+  const list = [
+    st('D1-01', '2026-11-02T03:00:00Z', { featureType: 'bedding' }),
+    st('D1-02', '2026-11-02T05:00:00Z', { featureType: 'joint' }),
+    st('S01', '2026-11-02T09:00:00Z', { isTest: true, featureType: 'other' }),
+  ];
+  assert.equal(lastRealStation(list).stationId, 'D1-02');
+  assert.equal(lastRealStation([]), null);
 });

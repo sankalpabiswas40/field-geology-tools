@@ -142,6 +142,7 @@ export function localTimeText(isoUtc, offsetMinutes) {
  * when it has no such field. Nothing that is already stored is ever changed or removed.
  */
 export const NEW_FIELD_DEFAULTS = {
+  locationSource: null, // 'gps', 'map' or 'typed'; null = recorded before this was stored
   unitUpper: null,
   unitLower: null,
   lineationType: null,
@@ -180,4 +181,45 @@ export function nameSuggestions(stations) {
   const names = [...counts.values()].map((spellings) =>
     [...spellings.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0]);
   return names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+/** Where a station's location came from. */
+export const LOCATION_SOURCES = ['gps', 'map', 'typed'];
+
+/** Calendar day number (days since 1970-01-01) of a UTC time, in the local time zone given by its offset. */
+export function localDayNumber(isoUtc, offsetMinutes) {
+  const t = new Date(Date.parse(isoUtc) + (offsetMinutes || 0) * 60000);
+  return Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) / 86400000;
+}
+
+/**
+ * Suggested station ID "D<day>-<count>", e.g. D1-01, D3-12.
+ * Day 1 is the local date of the first saved station that is not test data (today, if there is none).
+ * The count is the number of real stations already recorded today plus one, with two digits;
+ * if that ID is taken, the next free number is used.
+ */
+export function dayStationId(stations, nowIso, nowOffsetMinutes) {
+  const real = stations.filter((s) => s.isTest !== true && s.createdAt);
+  const today = localDayNumber(nowIso, nowOffsetMinutes);
+  const days = real.map((s) => localDayNumber(s.createdAt, s.tzOffsetMinutes));
+  const first = days.length ? Math.min(...days) : today;
+  const day = Math.max(1, today - first + 1);
+  const used = new Set(stations.map((s) => s.stationId));
+  let n = days.filter((d) => d === today).length + 1;
+  let id;
+  do {
+    id = `D${day}-${String(n).padStart(2, '0')}`;
+    n++;
+  } while (used.has(id));
+  return id;
+}
+
+/** The newest saved station that is not test data, or null. Used by "Repeat last". */
+export function lastRealStation(stations) {
+  let last = null;
+  for (const s of stations) {
+    if (s.isTest === true) continue;
+    if (!last || s.createdAt > last.createdAt) last = s;
+  }
+  return last;
 }

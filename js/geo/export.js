@@ -16,6 +16,7 @@ const COLUMNS = [
   ['latitude', (s) => s.latitude],
   ['longitude', (s) => s.longitude],
   ['gps_accuracy_m', (s) => s.accuracy],
+  ['location_source', (s) => s.locationSource],
   ['dem_elevation_m', (s) => (s.elevation === null ? null : Math.round(s.elevation * 10) / 10)],
   ['elevation_note', (s) => s.elevationNote],
   ['utm_zone', (s) => (s.utm ? `${s.utm.zone}${s.utm.hemisphere}` : null)],

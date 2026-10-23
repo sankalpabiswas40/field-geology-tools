@@ -22,14 +22,15 @@ test('CSV has a header, explicit dip direction, and quotes awkward text', () => 
   const csv = stationsToCsv(stations);
   assert.ok(csv.startsWith('﻿'));
   const lines = csv.slice(1).split('\r\n');
-  assert.equal(lines[0].split(',').length, 24);
+  assert.equal(lines[0].split(',').length, 25);
+  assert.match(lines[0], /gps_accuracy_m,location_source,/);
   assert.match(lines[0], /dip_direction,lineation_type,trend,plunge,/);
   assert.match(lines[0], /lithology,unit_upper_younger,unit_lower_older,notes/);
   assert.ok(lines[0].endsWith(',notes,isTest'));
   assert.ok(lines[1].endsWith(',false'), 'real station');
   assert.ok(lines[2].endsWith(',true'), 'test station');
   assert.match(lines[0], /strike_rhr,dip,dip_direction/);
-  assert.match(lines[1], /^S001,2026-10-23T08:35:00.000Z,2026-10-23 14:05 \(UTC\+05:30\),46.5444,-8.0833,6,1900,,29N,570000,5154951,bedding,45,30,135,,,,yes,/);
+  assert.match(lines[1], /^S001,2026-10-23T08:35:00.000Z,2026-10-23 14:05 \(UTC\+05:30\),46.5444,-8.0833,6,,1900,,29N,570000,5154951,bedding,45,30,135,,,,yes,/);
   assert.match(csv, /"sandstone, ""red"""/);
   assert.match(csv, /"line one\nline two"/);
   // Empty values stay empty, never "null".

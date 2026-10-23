@@ -2,9 +2,12 @@
 
 import { elevationAt } from './geo/raster.js';
 import { toUtm } from './geo/utm.js';
-import { checkStrike, dipDirectionFromStrike, formatAzimuth, strikeDipSymbol, lineationSymbol } from './geo/attitude.js';
 import {
-  checkStationInput, nextStationId, localTimeText, normalizeStation, nameSuggestions, FEATURE_TYPES, ATTITUDE_OPTIONAL,
+  checkStrike, checkTrend, dipDirectionFromStrike, formatAzimuth, strikeDipSymbol, lineationSymbol, compassArrow,
+} from './geo/attitude.js';
+import {
+  checkStationInput, localTimeText, normalizeStation, nameSuggestions, dayStationId, lastRealStation,
+  FEATURE_TYPES, ATTITUDE_OPTIONAL,
 } from './geo/station.js';
 import { stationsToCsv, stationsToGeoJson, stationsToKml } from './geo/export.js';
 import { loadStations, saveStation, deleteStation, getMeta, setMeta } from './storage.js';
@@ -60,6 +63,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   // What the open form is working on.
   let editing = null; // the station being edited, or null for a new one
   let draftTime = null; // { createdAt, tzOffsetMinutes } for a new station
+  let locationSource = null; // 'gps', 'map' or 'typed' for the location now in the form
 
   // ---------- Counter ----------
 
@@ -114,7 +118,12 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
         parts.push(`<text x="${sym.label.x}" y="${sym.label.y}" class="dip-label" fill="${colour}">${station.dip}</text>`);
       }
     }
-    parts.push(`<circle cx="${size / 2}" cy="${size / 2}" r="5" fill="${colour}" stroke="#fff" stroke-width="2"/>`);
+    if (station.locationSource === 'map') {
+      // Placed by tapping the map: black dashed ring, so it stands out from GPS positions.
+      parts.push(`<circle cx="${size / 2}" cy="${size / 2}" r="7" fill="${colour}" stroke="#000" stroke-width="2.5" stroke-dasharray="3 2"/>`);
+    } else {
+      parts.push(`<circle cx="${size / 2}" cy="${size / 2}" r="5" fill="${colour}" stroke="#fff" stroke-width="2"/>`);
+    }
     return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">${parts.join('')}</svg>`;
   }
 
@@ -167,6 +176,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
         : []),
       ['Notes', s.notes || '—'],
       ['Lat / Long', `${s.latitude.toFixed(6)}°, ${s.longitude.toFixed(6)}°`],
+      ['Location from', { gps: 'GPS', map: 'placed on the map', typed: 'typed by hand' }[s.locationSource] || 'not recorded'],
       ['GPS accuracy', s.accuracy === null ? 'not recorded' : `± ${s.accuracy} m`],
       ['Elevation', elevationText(s)],
       ['Recorded', localTimeText(s.createdAt, s.tzOffsetMinutes)],
@@ -252,16 +262,38 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     if (!text.trim()) {
       el.dipDir.textContent = 'Dip direction: type a strike';
       el.dipDir.classList.remove('bad');
+    } else {
+      const s = checkStrike(text);
+      if (s.ok) {
+        el.dipDir.textContent = `Dip direction: ${formatAzimuth(dipDirectionFromStrike(s.value))}°`;
+        el.dipDir.classList.remove('bad');
+      } else {
+        el.dipDir.textContent = s.message;
+        el.dipDir.classList.add('bad');
+      }
+    }
+    updateCompass();
+  }
+
+  /** Big arrow on the compass rose: dip direction for planes, trend for lineations. */
+  function updateCompass() {
+    const lineation = field('featureType').value === 'lineation';
+    const check = lineation ? checkTrend(field('trend').value) : checkStrike(field('strike').value);
+    const arrow = $('f-compass-arrow');
+    const label = $('f-compass-label');
+    if (!check.ok) {
+      arrow.innerHTML = '';
+      label.innerHTML = lineation ? 'Trend<small>type a trend to see the arrow</small>'
+        : 'Dip direction<small>type a strike to see the arrow</small>';
       return;
     }
-    const s = checkStrike(text);
-    if (s.ok) {
-      el.dipDir.textContent = `Dip direction: ${formatAzimuth(dipDirectionFromStrike(s.value))}°`;
-      el.dipDir.classList.remove('bad');
-    } else {
-      el.dipDir.textContent = s.message;
-      el.dipDir.classList.add('bad');
-    }
+    const az = lineation ? check.value : dipDirectionFromStrike(check.value);
+    const a = compassArrow(az);
+    arrow.innerHTML = `<line x1="${a.tail[0]}" y1="${a.tail[1]}" x2="${a.neck[0]}" y2="${a.neck[1]}" stroke="#e9a23b" stroke-width="7" stroke-linecap="round"/>` +
+      `<polygon points="${a.head.map((p) => p.join(',')).join(' ')}" fill="#e9a23b"/>` +
+      '<circle cx="60" cy="60" r="4" fill="#f1f4ef"/>';
+    label.innerHTML = `${lineation ? 'Trend' : 'Dip direction'} ${formatAzimuth(az)}°` +
+      `<small>${lineation ? 'The line plunges this way.' : 'Does the bed really dip this way?'}</small>`;
   }
 
   function fillLocationFromGps() {
@@ -274,6 +306,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     field('latitude').value = p.latitude.toFixed(6);
     field('longitude').value = p.longitude.toFixed(6);
     field('accuracy').value = String(Math.round(p.accuracy * 10) / 10);
+    locationSource = 'gps';
     el.locationNote.textContent = 'Filled from your current GPS position.';
     el.locationNote.classList.remove('bad');
     updateElevation();
@@ -299,15 +332,18 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       }
       field('featureType').value = station.featureType;
       field('younging').value = station.younging;
-      el.locationNote.textContent = 'Saved location. Tap "Use my location" to replace it.';
+      el.locationNote.textContent = 'Saved location. Tap "Use my location" or "Place on map" to replace it.';
       el.locationNote.classList.remove('bad');
+      locationSource = station.locationSource ?? null;
+      $('f-repeat').hidden = true;
     } else {
+      locationSource = null;
+      $('f-repeat').hidden = false;
       el.title.textContent = 'New station';
       const now = new Date();
       draftTime = { createdAt: now.toISOString(), tzOffsetMinutes: -now.getTimezoneOffset() };
       el.datetime.textContent = `Date and time: ${localTimeText(draftTime.createdAt, draftTime.tzOffsetMinutes)}`;
-      const last = stations[stations.length - 1];
-      field('stationId').value = nextStationId(last && last.stationId, stations.map((s) => s.stationId));
+      field('stationId').value = dayStationId(stations, draftTime.createdAt, draftTime.tzOffsetMinutes);
       field('younging').value = 'unknown';
       fillLocationFromGps();
     }
@@ -315,6 +351,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     updateFeatureFields();
     updateElevation();
     updateDipDirection();
+    updateCompass();
     el.sheet.hidden = false;
     el.sheet.scrollTop = 0;
   }
@@ -332,6 +369,61 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   function updateNameSuggestions() {
     const list = $('names-list');
     list.replaceChildren(...nameSuggestions(stations).map((n) => new Option(n)));
+  }
+
+  /** "Repeat last": copies feature type and lithology from the previous real station (never attitude or location). */
+  function repeatLast() {
+    const last = lastRealStation(stations);
+    if (!last) {
+      el.locationNote.textContent = '';
+      showErrors([{ field: 'featureType', message: 'There is no earlier station to repeat yet.' }]);
+      return;
+    }
+    clearErrors();
+    field('featureType').value = last.featureType;
+    field('lithology').value = last.lithology || '';
+    updateFeatureFields();
+    updateCompass();
+  }
+
+  // ---------- Place on map ----------
+
+  const PlaceBanner = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd() {
+      const div = L.DomUtil.create('div', 'map-banner');
+      div.innerHTML = '<p>Tap the map where the station is.</p>' +
+        '<div class="banner-actions one"><button type="button" class="btn secondary">Cancel</button></div>';
+      L.DomEvent.disableClickPropagation(div);
+      div.querySelector('button').addEventListener('click', () => finishPlaceOnMap(null));
+      return div;
+    },
+  });
+  const placeBanner = new PlaceBanner();
+
+  function startPlaceOnMap() {
+    el.sheet.hidden = true;
+    placeBanner.addTo(map);
+    map.on('click', onPlaceClick);
+  }
+
+  function onPlaceClick(e) {
+    finishPlaceOnMap(e.latlng);
+  }
+
+  function finishPlaceOnMap(latlng) {
+    map.off('click', onPlaceClick);
+    placeBanner.remove();
+    if (latlng) {
+      field('latitude').value = latlng.lat.toFixed(6);
+      field('longitude').value = latlng.lng.toFixed(6);
+      field('accuracy').value = '';
+      locationSource = 'map';
+      el.locationNote.textContent = 'Placed on the map. Accuracy depends on how carefully you tapped; zoom in first.';
+      el.locationNote.classList.remove('bad');
+      updateElevation();
+    }
+    el.sheet.hidden = false;
   }
 
   function closeForm() {
@@ -389,6 +481,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       elevationNote: elev.note,
       elevationDem: elev.demName || null,
       utm,
+      locationSource,
       isTest: editing ? editing.isTest === true : false,
     };
     try {
@@ -543,12 +636,17 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   field('featureType').addEventListener('change', updateFeatureFields);
   field('latitude').addEventListener('input', updateElevation);
   field('longitude').addEventListener('input', updateElevation);
-  for (const name of ['latitude', 'longitude', 'accuracy']) {
+  for (const name of ['latitude', 'longitude']) {
     field(name).addEventListener('input', () => {
+      locationSource = 'typed';
       el.locationNote.textContent = 'Typed by hand.';
       el.locationNote.classList.remove('bad');
     });
   }
+  field('trend').addEventListener('input', updateCompass);
+  field('featureType').addEventListener('change', updateCompass);
+  $('f-repeat').addEventListener('click', repeatLast);
+  $('f-place-on-map').addEventListener('click', startPlaceOnMap);
   // Fill the feature-type list from the shared list of types.
   const select = field('featureType');
   for (const t of FEATURE_TYPES) select.append(new Option(t[0].toUpperCase() + t.slice(1), t));

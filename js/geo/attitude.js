@@ -157,3 +157,23 @@ export function lineationSymbol(trend, plunge, { size = 44, length = 17, headLen
     label: { x: round(c + ux * (length + 8)), y: round(c + uy * (length + 8)) },
   };
 }
+
+/**
+ * A big compass arrow for the station form, in an SVG of the given size (x east, y south).
+ * Returns { tip: [x, y], tail: [x, y], head: [[x, y], [x, y], [x, y]] } pointing towards `azimuth`.
+ */
+export function compassArrow(azimuth, { size = 120, radius = 44, headLength = 16 } = {}) {
+  const c = size / 2;
+  const round = (v) => Math.round(v * 100) / 100;
+  const ux = Math.sin(azimuth * DEG);
+  const uy = -Math.cos(azimuth * DEG);
+  const tip = [c + ux * radius, c + uy * radius];
+  const back = [tip[0] - ux * headLength, tip[1] - uy * headLength];
+  const half = headLength * 0.6;
+  return {
+    tip: tip.map(round),
+    tail: [round(c - ux * radius * 0.45), round(c - uy * radius * 0.45)],
+    neck: back.map(round),
+    head: [tip, [back[0] - uy * half, back[1] + ux * half], [back[0] + uy * half, back[1] - ux * half]].map((p) => p.map(round)),
+  };
+}
