@@ -20,6 +20,7 @@
   <nav class="tabs" role="tablist" aria-label="Screens">
     <button type="button" role="tab" class="tab" data-view="map" aria-selected="true">Map</button>
     <button type="button" role="tab" class="tab" data-view="stereonet" aria-selected="false">Stereonet</button>
+    <button type="button" role="tab" class="tab" data-view="help" aria-selected="false">Help</button>
   </nav>
   <div id="view-map" class="app">
     <aside class="panel">
@@ -103,6 +104,123 @@
           <button id="sn-export-svg" class="btn secondary" type="button">Export SVG</button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Help tab (plain HTML, so it works offline) -->
+  <section id="view-help" class="page" hidden>
+    <div class="page-body help">
+      <h2>Help</h2>
+
+      <section class="help-card warn-card">
+        <h3>Record on ONE device only</h3>
+        <p>Stations are saved only on the device you record them on. iPad and iPhone do not share them.
+          If you record on both, you get two separate sets with clashing station IDs.
+          Pick one device for the whole trip.</p>
+      </section>
+
+      <section class="help-card">
+        <h3>Daily routine</h3>
+        <ol>
+          <li><strong>Night before:</strong> charge the device and a power bank.</li>
+          <li><strong>Before leaving (with internet, once after any app update):</strong> open the app so it can
+            update itself. Check the DEM appears and the station counter looks right.</li>
+          <li><strong>At the first stop:</strong> tap <em>My location</em> and wait until GPS accuracy is small
+            (for example ± 5–10 m). Do this before switching on Airplane Mode: the first fix is much faster
+            then. GPS still works in Airplane Mode.</li>
+          <li><strong>During the day:</strong> keep Airplane Mode on to save battery. The app works fully offline.</li>
+          <li><strong>Every evening:</strong> tap <em>Export</em> and save the files to Files (or send them
+            somewhere safe), then make a <em>Backup</em>. The counter turns amber while some stations are not exported.</li>
+        </ol>
+      </section>
+
+      <section class="help-card">
+        <h3>Recording a station</h3>
+        <ol>
+          <li>Tap <em>New station</em>. The ID (like D2-05), date and time fill in by themselves.</li>
+          <li>Location: <em>Use my location</em> (GPS), or <em>Place on map</em> when GPS is poor
+            (zoom in first, then tap the spot). You can also type latitude/longitude.</li>
+          <li>The elevation comes from the DEM, never from GPS height.</li>
+          <li>Choose the feature type. <em>Repeat last</em> copies the feature type and lithology of your
+            previous station (never its attitude or location).</li>
+          <li>Type strike and dip (right-hand rule, see below), or trend and plunge for a lineation.
+            Check the big compass arrow points the way the bed really dips.</li>
+          <li>Tap <em>Save station</em>. Mistakes are shown in red and nothing is saved until they are fixed.</li>
+        </ol>
+      </section>
+
+      <section class="help-card">
+        <h3>The right-hand rule</h3>
+        <div class="help-figure">
+          <svg viewBox="0 0 220 220" width="220" height="220" role="img"
+               aria-label="Map view: strike line towards 045, the bed dips to the right, towards 135">
+            <rect width="220" height="220" rx="12" fill="#fff"/>
+            <g font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#111">
+              <path d="M200,18 v26" stroke="#111" stroke-width="2"/><path d="M200,12 l-5,10 h10z" fill="#111"/>
+              <text x="200" y="58" text-anchor="middle" font-weight="700">N</text>
+              <line x1="45" y1="175" x2="165" y2="55" stroke="#c1121f" stroke-width="5" stroke-linecap="round"/>
+              <path d="M172,48 l-17,4 l13,13z" fill="#c1121f"/>
+              <text x="160" y="38" text-anchor="end" font-weight="700" fill="#c1121f">strike 045°</text>
+              <line x1="105" y1="115" x2="140" y2="150" stroke="#1d3557" stroke-width="5" stroke-linecap="round"/>
+              <path d="M147,157 l-4,-17 l-13,13z" fill="#1d3557"/>
+              <text x="210" y="182" text-anchor="end" font-weight="700" fill="#1d3557">dips to the RIGHT</text>
+              <text x="210" y="198" text-anchor="end" fill="#1d3557">dip direction 135°</text>
+              <text x="14" y="26" font-weight="700">Map view</text>
+              <text x="14" y="42">Bed 045/30</text>
+            </g>
+          </svg>
+        </div>
+        <p>Face along the <strong>strike</strong> direction. With the right-hand rule the bed always dips to your
+          <strong>right</strong>. So <strong>dip direction = strike + 90°</strong>.</p>
+        <p>Example: 045/30 dips 30° towards 135° (south-east). A bed dipping towards 315° (north-west)
+          must be written 225/30, not 045/30.</p>
+        <p>Hand trick: put your right hand flat on the bed with your fingers pointing down the dip.
+          Your thumb points along the strike to record.</p>
+      </section>
+
+      <section class="help-card">
+        <h3>The trace predictor</h3>
+        <p>It assumes the bed is a <strong>perfect flat plane</strong> through the station, with the strike and dip
+          you measured, and shows where that plane meets the ground on the DEM.</p>
+        <ul>
+          <li>Solid line: your measurement. Dashed lines: dip and strike ± the uncertainty in <em>Trace settings</em>.</li>
+          <li>On gentle slopes, or where the bed dips nearly parallel to the ground, a small dip error moves the
+            line a long way.</li>
+          <li><strong>If the real contact does not follow the line</strong>, the bed is not one flat plane there.
+            That is evidence of folding or faulting, which is often the interesting part.</li>
+          <li>The DEM is about 30 m per cell, so small gullies and cliffs are smoothed out.</li>
+        </ul>
+      </section>
+
+      <section class="help-card">
+        <h3>Reading the stereonet</h3>
+        <ul>
+          <li>Dots are poles to planes, triangles are lineations, pink means TEST DATA.</li>
+          <li><strong>Fold axis</strong> (red square): only for bedding. The red dashed great circle is the
+            best-fit girdle.</li>
+          <li>"<strong>Only N poles</strong>": fewer than 6 bedding readings. No axis is given until you have more.</li>
+          <li>"<strong>One cluster, not a girdle</strong>": the poles bunch together, which usually means you only
+            measured one limb. Measure the other limb too.</li>
+          <li>"<strong>Do not split clearly into two limb groups</strong>": an axis is given, but no interlimb angle.
+            The fold may be rounded, or the readings are spread evenly.</li>
+          <li><strong>Cylindrical fit</strong>: "very good" or "good" means the poles follow one great circle.
+            "Fair" or "poor" means scatter, a non-cylindrical fold, or a mix of structures.</li>
+          <li><strong>Two interlimb angles</strong>: (a) uses the two most different readings, so it shows the
+            tightest part of the fold. (b) uses the average of each limb. Both get a Fleuty (1964) class.</li>
+          <li>Dips are always 0–90°, so an overturned limb looks upright. For tight or overturned folds,
+            record younging and check the angles yourself.</li>
+          <li>Use <em>antiform/synform</em> unless you know which way the beds young.</li>
+        </ul>
+      </section>
+
+      <section class="help-card">
+        <h3>Test data</h3>
+        <p><em>Trace settings › Load test stations</em> adds 10 pink stations around the DEM centre. They describe
+          a fold with a known answer: on the stereonet (tick <em>Include test stations</em>), S01–S08 give a fold axis
+          of 040/15 and interlimb angles of 79° (a) and 110° (b). Delete them with
+          <em>Delete all test stations</em> before real work. They never touch your real stations, and every
+          export marks them with isTest.</p>
+      </section>
     </div>
   </section>
   </div>
