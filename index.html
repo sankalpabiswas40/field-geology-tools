@@ -61,6 +61,19 @@
           <button id="delete-test-stations" class="btn danger" type="button">Delete all test stations</button>
         </div>
       </details>
+      <details class="details">
+        <summary>Data, backup and storage</summary>
+        <div class="settings">
+          <p class="field-note">Backup saves ALL stations (test data stays marked) and settings in one file.
+            Restore adds stations from a backup without making duplicates. The DEM GeoTIFF is not
+            included: keep it in Files.</p>
+          <button id="backup" class="btn secondary" type="button">Backup (all data)</button>
+          <button id="restore" class="btn secondary" type="button">Restore from backup</button>
+          <input id="restore-file" type="file" accept=".json,application/json" hidden>
+          <p id="last-backup" class="field-note"></p>
+          <p id="storage-status" class="field-note"></p>
+        </div>
+      </details>
       <details id="dem-details" class="details" hidden>
         <summary>DEM details</summary>
         <dl id="dem-info" class="readout"></dl>

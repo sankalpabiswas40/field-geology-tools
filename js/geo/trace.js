@@ -12,7 +12,7 @@ import { toUtm, utmZone } from './utm.js';
 import { planeNormal } from './plane.js';
 import { contourBand, joinSegments } from './contour.js';
 import { elevationAt } from './raster.js';
-import { normalizeAzimuth } from './attitude.js';
+import { normalizeAzimuth, parseNumber } from './attitude.js';
 
 /** Grid position (col, row) → { lat, lon }; (0, 0) is the centre of the top-left cell. */
 export function gridToLatLon(grid, col, row) {
@@ -95,4 +95,16 @@ export function predictTraces(grid, elevation, station, attitudes) {
       line.map(([col, row]) => ({ col, row, ...gridToLatLon(grid, col, row) }))),
   }));
   return { ok: true, stationElevation: here.elevation, zone, traces };
+}
+
+/** Largest uncertainty (degrees) allowed for the dashed traces. */
+export const MAX_UNCERTAINTY = 20;
+
+/** Checks the typed uncertainty setting. Returns { ok: true, value } or { ok: false, message }. */
+export function checkUncertainty(text) {
+  const v = parseNumber(text);
+  if (v === null || Number.isNaN(v) || v <= 0 || v > MAX_UNCERTAINTY) {
+    return { ok: false, message: `Type a number of degrees above 0 and up to ${MAX_UNCERTAINTY}, e.g. 3.` };
+  }
+  return { ok: true, value: v };
 }

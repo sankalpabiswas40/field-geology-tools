@@ -654,6 +654,32 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   return {
     /** A copy of the list of saved stations. */
     getStations: () => stations.slice(),
+    getLastExport: () => lastExport,
+    async setLastExport(value) {
+      lastExport = value || null;
+      try { await setMeta('lastExport', lastExport); } catch { /* shown for this session */ }
+      updateCounter();
+    },
+    /** Saves complete station records (from a restored backup). Returns { added, failed }. */
+    async addStations(list) {
+      let added = 0;
+      let failed = 0;
+      for (const record of list) {
+        const station = normalizeStation(record);
+        try {
+          await saveStation(station);
+        } catch {
+          failed++;
+          continue;
+        }
+        stations.push(station);
+        drawStation(station);
+        added++;
+      }
+      stations.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      updateCounter();
+      return { added, failed };
+    },
     /** Loads saved stations and draws them. */
     async load(persistResult) {
       storageProtected = persistResult;

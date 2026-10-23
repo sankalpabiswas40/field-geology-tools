@@ -11,6 +11,7 @@ import { initStations } from './stations-ui.js';
 import { initTraces } from './trace-ui.js';
 import { initArea } from './area-ui.js';
 import { initStereonet } from './stereonet-ui.js';
+import { initBackup } from './backup-ui.js';
 
 const SUN_AZIMUTH = 315;
 const SUN_ALTITUDE = 45;
@@ -79,6 +80,8 @@ const stationsUi = initStations({
   onPredictTrace: (station) => tracesUi.predict(station),
   onStationsChanged: () => { if (currentTab === 'stereonet') stereonetUi.render(); },
 });
+
+const backupUi = initBackup({ stationsUi, tracesUi, areaUi, showMessage });
 
 const stereonetUi = initStereonet({
   getStations: () => stationsUi.getStations(),
@@ -303,6 +306,7 @@ async function start() {
   const persisted = await askForPersistentStorage();
   await stationsUi.load(persisted);
   await areaUi.load();
+  const storage = await backupUi.load();
 
   let saved;
   try {
@@ -316,6 +320,7 @@ async function start() {
   } else {
     showMessage('Load a DEM GeoTIFF (WGS84, EPSG:4326) to begin.');
   }
+  if (storage.warn) showMessage(storage.text, 'error'); // more important than the start-up message
 }
 
 start();

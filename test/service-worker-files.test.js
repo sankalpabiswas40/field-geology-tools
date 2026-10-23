@@ -36,3 +36,34 @@ test('every app file is listed in sw.js', () => {
 test('cache version is a number', () => {
   assert.match(sw, /const CACHE_VERSION = \d+;/);
 });
+
+test('every file that index.html loads is cached', () => {
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const refs = [...html.matchAll(/(?:src|href)="([^"#:]+)"/g)].map((m) => m[1]);
+  assert.ok(refs.length > 5);
+  for (const ref of refs) {
+    assert.ok(!ref.startsWith('/'), `${ref} must be a relative path (GitHub Pages serves from a sub-folder)`);
+    assert.ok(listed.includes(ref), `${ref} is used by index.html but not cached in sw.js`);
+  }
+  assert.ok(!/https?:\/\//.test(html.replace(/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g, '')), 'no internet addresses in index.html');
+});
+
+test('every module the code imports (and the worker) is cached', () => {
+  for (const file of listed.filter((f) => f.endsWith('.js') && f.startsWith('js/'))) {
+    const code = readFileSync(join(root, file), 'utf8');
+    const dir = file.slice(0, file.lastIndexOf('/'));
+    const imports = [
+      ...[...code.matchAll(/from '(\.[^']+)'/g)].map((m) => m[1]),
+      ...[...code.matchAll(/new URL\('(\.[^']+)'/g)].map((m) => m[1]),
+    ];
+    for (const imp of imports) {
+      const target = join(dir, imp).replaceAll('\\', '/');
+      assert.ok(listed.includes(target), `${file} imports ${imp} (${target}), which is not cached`);
+    }
+    assert.ok(!/https?:\/\/(?!www\.w3\.org|www\.opengis\.net)/.test(code), `${file} must not load anything from the internet`);
+  }
+});
+
+test('the service worker only deletes its own old caches', () => {
+  assert.match(sw, /startsWith\('field-geology-tools-v'\)/);
+});

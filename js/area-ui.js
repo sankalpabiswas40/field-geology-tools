@@ -75,6 +75,13 @@ export function initArea({ map, showMessage }) {
       redraw(area);
     },
     getArea: () => area,
+    /** Uses and saves an area (from a restored backup). */
+    async setArea(a) {
+      if (!Array.isArray(a) || a.length < 3) return;
+      area = a;
+      redraw(area);
+      try { await setMeta('stereonetArea', area); } catch { /* used for this session */ }
+    },
     /** Starts drawing; calls onDone(true/false) when finished. */
     start(onDone) {
       if (drawing) return;

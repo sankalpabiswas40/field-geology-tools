@@ -1,7 +1,7 @@
 // Service worker: keeps a copy of every app file on the device so the app opens offline.
 // IMPORTANT: whenever ANY file changes, increase CACHE_VERSION so devices download the update.
 
-const CACHE_VERSION = 10;
+const CACHE_VERSION = 11;
 const CACHE_NAME = `field-geology-tools-v${CACHE_VERSION}`;
 
 // Every file the app needs, as paths relative to this file.
@@ -11,6 +11,7 @@ const APP_FILES = [
   './manifest.webmanifest',
   './css/app.css',
   './js/app.js',
+  './js/backup-ui.js',
   './js/area-ui.js',
   './js/dem.js',
   './js/hillshade-layer.js',
@@ -22,6 +23,7 @@ const APP_FILES = [
   './js/trace-worker.js',
   './js/geo/area.js',
   './js/geo/attitude.js',
+  './js/geo/backup.js',
   './js/geo/contour.js',
   './js/geo/ellipsoid.js',
   './js/geo/export.js',
@@ -59,10 +61,13 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Delete caches from older versions.
+  // Delete caches from older versions of THIS app. Saved stations (IndexedDB) are never touched.
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      // Only this app's OLD caches: other sites on the same github.io address keep theirs.
+      .then((keys) => Promise.all(keys
+        .filter((k) => k.startsWith('field-geology-tools-v') && k !== CACHE_NAME)
+        .map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

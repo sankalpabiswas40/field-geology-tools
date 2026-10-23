@@ -1,14 +1,14 @@
 // Outcrop trace predictor on the map: runs the prediction, draws the traces,
 // and handles the "Clear traces" and "Export traces (KML)" buttons.
 
-import { uncertaintyAttitudes, predictTraces } from './geo/trace.js';
-import { parseNumber, formatAzimuth, dipDirectionFromStrike } from './geo/attitude.js';
+import { uncertaintyAttitudes, predictTraces, checkUncertainty, MAX_UNCERTAINTY } from './geo/trace.js';
+import { formatAzimuth, dipDirectionFromStrike } from './geo/attitude.js';
 import { tracesToKml } from './geo/export.js';
 import { getMeta, setMeta } from './storage.js';
 import { shareOrDownload, fileStamp } from './share.js';
 
 const DEFAULT_DELTA = 3;
-const MAX_DELTA = 20;
+const MAX_DELTA = MAX_UNCERTAINTY;
 const TRACE_COLOURS = ['#ff3b30', '#ff9500', '#d000ff', '#00a3ff', '#00c853'];
 
 const $ = (id) => document.getElementById(id);
@@ -80,13 +80,13 @@ export function initTraces({ map, showMessage, getDem }) {
   }
 
   async function saveDelta() {
-    const v = parseNumber(el.delta.value);
-    if (v === null || Number.isNaN(v) || v <= 0 || v > MAX_DELTA) {
-      el.deltaNote.textContent = `Type a number of degrees above 0 and up to ${MAX_DELTA}, e.g. 3.`;
+    const check = checkUncertainty(el.delta.value);
+    if (!check.ok) {
+      el.deltaNote.textContent = check.message;
       el.deltaNote.classList.add('bad');
       return;
     }
-    delta = v;
+    delta = check.value;
     el.deltaNote.textContent = `Saved: new predictions use ±${delta}°.`;
     el.deltaNote.classList.remove('bad');
     try {
@@ -232,6 +232,14 @@ export function initTraces({ map, showMessage, getDem }) {
 
   return {
     predict,
+    getDelta: () => delta,
+    /** Uses and saves a new uncertainty (from a restored backup). Ignores impossible values. */
+    async setDelta(v) {
+      if (!(typeof v === 'number' && v > 0 && v <= MAX_DELTA)) return;
+      delta = v;
+      el.delta.value = String(v);
+      try { await setMeta('traceUncertaintyDeg', v); } catch { /* used for this session */ }
+    },
     /** A new DEM makes old traces meaningless, so remove them. */
     demChanged() {
       if (sets.length) {
