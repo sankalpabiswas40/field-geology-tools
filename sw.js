@@ -1,7 +1,7 @@
 // Service worker: keeps a copy of every app file on the device so the app opens offline.
 // IMPORTANT: whenever ANY file changes, increase CACHE_VERSION so devices download the update.
 
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 const CACHE_NAME = `field-geology-tools-v${CACHE_VERSION}`;
 
 // Every file the app needs, as paths relative to this file.

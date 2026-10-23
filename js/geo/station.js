@@ -3,15 +3,19 @@
 
 import { parseNumber, checkStrike, checkDip, dipDirectionFromStrike } from './attitude.js';
 
-export const FEATURE_TYPES = ['bedding', 'foliation', 'joint', 'fault', 'vein', 'other'];
+export const FEATURE_TYPES = ['bedding', 'foliation', 'joint', 'fault', 'vein', 'contact', 'other'];
+
+/** Feature types where strike and dip may be left empty (both together). */
+export const ATTITUDE_OPTIONAL = ['contact', 'other'];
 export const YOUNGING_OPTIONS = ['yes', 'no', 'unknown'];
 
 /**
  * Checks the station form. `input` holds the raw text from each box:
- *   { stationId, latitude, longitude, accuracy, featureType, strike, dip, younging, lithology, notes }
+ *   { stationId, latitude, longitude, accuracy, featureType, strike, dip, younging, lithology, notes,
+ *     unitUpper, unitLower }   (the two unit names are used for contacts only)
  * `otherIds` are the IDs of all OTHER stations (to stop duplicates).
  * Returns { ok: true, values } or { ok: false, errors: [{ field, message }] }.
- * Strike and dip are required, except for feature type "other" where both may be left empty.
+ * Strike and dip are required, except for "contact" and "other" where both may be left empty.
  */
 export function checkStationInput(input, otherIds = []) {
   const errors = [];
@@ -45,9 +49,10 @@ export function checkStationInput(input, otherIds = []) {
   let dip = null;
   const strikeEmpty = parseNumber(input.strike) === null;
   const dipEmpty = parseNumber(input.dip) === null;
-  if (featureType === 'other' && strikeEmpty && dipEmpty) {
-    // No attitude measured: allowed for "other" only.
-  } else if (featureType === 'other' && strikeEmpty !== dipEmpty) {
+  const optional = ATTITUDE_OPTIONAL.includes(featureType);
+  if (optional && strikeEmpty && dipEmpty) {
+    // No attitude measured: allowed for contacts and "other".
+  } else if (optional && strikeEmpty !== dipEmpty) {
     add(strikeEmpty ? 'strike' : 'dip', 'Give both strike and dip, or leave both empty.');
   } else {
     const s = checkStrike(input.strike);
@@ -74,6 +79,8 @@ export function checkStationInput(input, otherIds = []) {
       younging,
       lithology: String(input.lithology ?? '').trim(),
       notes: String(input.notes ?? '').trim(),
+      unitUpper: featureType === 'contact' ? String(input.unitUpper ?? '').trim() || null : null,
+      unitLower: featureType === 'contact' ? String(input.unitLower ?? '').trim() || null : null,
     },
   };
 }
@@ -110,4 +117,46 @@ export function localTimeText(isoUtc, offsetMinutes) {
   const abs = Math.abs(offsetMinutes);
   return `${t.getUTCFullYear()}-${p(t.getUTCMonth() + 1)}-${p(t.getUTCDate())} ` +
     `${p(t.getUTCHours())}:${p(t.getUTCMinutes())} (UTC${sign}${p(Math.floor(abs / 60))}:${p(abs % 60)})`;
+}
+
+/**
+ * Fields added to stations after the first version, with the value an older station gets
+ * when it has no such field. Nothing that is already stored is ever changed or removed.
+ */
+export const NEW_FIELD_DEFAULTS = {
+  unitUpper: null,
+  unitLower: null,
+  isTest: false,
+};
+
+/** Brings a saved station of any older format up to date by adding missing fields only. */
+export function normalizeStation(record) {
+  const out = { ...record };
+  for (const [key, value] of Object.entries(NEW_FIELD_DEFAULTS)) {
+    if (!(key in out)) out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * Names already used for lithology and contact units, for the suggestion list, so spelling
+ * stays consistent. Case-insensitive duplicates are merged (the most used spelling wins).
+ * Test data is left out. Sorted alphabetically.
+ */
+export function nameSuggestions(stations) {
+  const counts = new Map(); // lower-case → Map(spelling → count)
+  for (const s of stations) {
+    if (s.isTest === true) continue;
+    for (const v of [s.lithology, s.unitUpper, s.unitLower]) {
+      const name = String(v ?? '').trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!counts.has(key)) counts.set(key, new Map());
+      const spellings = counts.get(key);
+      spellings.set(name, (spellings.get(name) || 0) + 1);
+    }
+  }
+  const names = [...counts.values()].map((spellings) =>
+    [...spellings.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0]);
+  return names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }

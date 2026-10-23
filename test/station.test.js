@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkStationInput, nextStationId, localTimeText } from '../js/geo/station.js';
+import { checkStationInput, nextStationId, localTimeText, normalizeStation, nameSuggestions } from '../js/geo/station.js';
 
 const good = {
   stationId: 'S001', latitude: '46.5444', longitude: '8.0833', accuracy: '6',
@@ -16,7 +16,7 @@ test('a complete, valid station is accepted and dip direction is stored', () => 
   assert.deepEqual(r.values, {
     stationId: 'S001', latitude: 46.5444, longitude: 8.0833, accuracy: 6,
     featureType: 'bedding', strike: 45, dip: 30, dipDirection: 135, younging: 'unknown',
-    lithology: 'sandstone', notes: 'cross-bedded',
+    lithology: 'sandstone', notes: 'cross-bedded', unitUpper: null, unitLower: null,
   });
 });
 
@@ -83,4 +83,52 @@ test('next station ID keeps prefix and padding and skips used IDs', () => {
 test('local time text', () => {
   assert.equal(localTimeText('2026-10-23T08:35:00.000Z', 330), '2026-10-23 14:05 (UTC+05:30)');
   assert.equal(localTimeText('2026-10-23T00:10:00.000Z', -60), '2026-10-22 23:10 (UTC−01:00)');
+});
+
+test('contacts: strike/dip optional (both or neither), unit names kept and trimmed', () => {
+  const c = checkStationInput({ ...good, featureType: 'contact', strike: '', dip: '', unitUpper: ' Red sandstone ', unitLower: 'Grey shale' });
+  assert.equal(c.ok, true);
+  assert.equal(c.values.strike, null);
+  assert.equal(c.values.unitUpper, 'Red sandstone');
+  assert.equal(c.values.unitLower, 'Grey shale');
+  const withAttitude = checkStationInput({ ...good, featureType: 'contact', unitUpper: '', unitLower: '' });
+  assert.equal(withAttitude.values.dipDirection, 135);
+  assert.equal(withAttitude.values.unitUpper, null, 'empty unit stored as null');
+  assert.deepEqual(fieldsWithErrors(checkStationInput({ ...good, featureType: 'contact', strike: '10', dip: '' })), ['dip']);
+  assert.deepEqual(fieldsWithErrors(checkStationInput({ ...good, featureType: 'contact', strike: '10', dip: '95' })), ['dip']);
+});
+
+test('unit names are only stored for contacts', () => {
+  const r = checkStationInput({ ...good, unitUpper: 'left over from a contact', unitLower: 'x' });
+  assert.equal(r.values.unitUpper, null);
+  assert.equal(r.values.unitLower, null);
+});
+
+test('old-format stations survive: missing new fields are added, nothing is changed or lost', () => {
+  // A station exactly as the app saved it before contacts, lineations and test data existed.
+  const old = {
+    uuid: 'a1b2', stationId: 'S001', createdAt: '2026-10-23T08:35:00.000Z', tzOffsetMinutes: 330, updatedAt: null,
+    latitude: 46.5444, longitude: 8.0833, accuracy: 6, featureType: 'bedding', strike: 45, dip: 30, dipDirection: 135,
+    younging: 'unknown', lithology: 'sandstone', notes: 'x', elevation: 1900, elevationNote: null,
+    elevationDem: 'dem.tif', utm: { zone: 32, hemisphere: 'N', easting: 429720, northing: 5154950 },
+  };
+  const frozen = structuredClone(old);
+  const n = normalizeStation(old);
+  for (const [k, v] of Object.entries(frozen)) assert.deepEqual(n[k], v, `field ${k} kept`);
+  assert.equal(n.unitUpper, null);
+  assert.equal(n.isTest, false);
+  assert.deepEqual(old, frozen, 'the original record object is not modified');
+  // Values that are already there win over defaults.
+  assert.equal(normalizeStation({ ...old, isTest: true }).isTest, true);
+  // Running it twice changes nothing.
+  assert.deepEqual(normalizeStation(n), n);
+});
+
+test('name suggestions: unique, consistent spelling, no test data, sorted', () => {
+  const list = nameSuggestions([
+    { lithology: 'Sandstone' }, { lithology: 'sandstone' }, { lithology: 'Sandstone ' },
+    { lithology: 'Granite', unitUpper: 'Upper Shale', unitLower: 'basalt' },
+    { lithology: 'test', isTest: true }, { lithology: '' }, { lithology: null },
+  ]);
+  assert.deepEqual(list, ['basalt', 'Granite', 'Sandstone', 'Upper Shale']);
 });

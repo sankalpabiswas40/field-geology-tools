@@ -141,8 +141,19 @@
         <select name="featureType"><option value="">Choose…</option></select>
       </label>
 
+      <fieldset id="f-contact" class="group" hidden>
+        <legend>Contact: units on each side</legend>
+        <label class="field">Unit on younger / upper side
+          <input name="unitUpper" type="text" list="names-list" autocapitalize="sentences" autocomplete="off">
+        </label>
+        <label class="field">Unit on older / lower side
+          <input name="unitLower" type="text" list="names-list" autocapitalize="sentences" autocomplete="off">
+        </label>
+      </fieldset>
+
       <fieldset class="group">
         <legend>Attitude (right-hand rule: the plane dips to the right of strike)</legend>
+        <p id="f-attitude-optional" class="field-note" hidden>Optional for this feature type: fill in both or leave both empty.</p>
         <div class="row">
           <label class="field">Strike (0–360°)
             <input name="strike" type="text" inputmode="decimal" placeholder="e.g. 045">
@@ -164,8 +175,9 @@
       </fieldset>
 
       <label class="field">Lithology
-        <input name="lithology" type="text" autocapitalize="sentences">
+        <input name="lithology" type="text" list="names-list" autocapitalize="sentences" autocomplete="off">
       </label>
+      <datalist id="names-list"></datalist>
       <label class="field">Notes
         <textarea name="notes" rows="3" autocapitalize="sentences"></textarea>
       </label>

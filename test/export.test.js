@@ -22,7 +22,8 @@ test('CSV has a header, explicit dip direction, and quotes awkward text', () => 
   const csv = stationsToCsv(stations);
   assert.ok(csv.startsWith('﻿'));
   const lines = csv.slice(1).split('\r\n');
-  assert.equal(lines[0].split(',').length, 19);
+  assert.equal(lines[0].split(',').length, 21);
+  assert.match(lines[0], /lithology,unit_upper_younger,unit_lower_older,notes/);
   assert.ok(lines[0].endsWith(',notes,isTest'));
   assert.ok(lines[1].endsWith(',false'), 'real station');
   assert.ok(lines[2].endsWith(',true'), 'test station');

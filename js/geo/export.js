@@ -27,6 +27,8 @@ const COLUMNS = [
   ['dip_direction', (s) => s.dipDirection],
   ['younging_known', (s) => s.younging],
   ['lithology', (s) => s.lithology],
+  ['unit_upper_younger', (s) => s.unitUpper],
+  ['unit_lower_older', (s) => s.unitLower],
   ['notes', (s) => s.notes],
   // Marks built-in TEST DATA so it can never be confused with real field data.
   ['isTest', (s) => s.isTest === true],

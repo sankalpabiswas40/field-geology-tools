@@ -3,7 +3,9 @@
 import { elevationAt } from './geo/raster.js';
 import { toUtm } from './geo/utm.js';
 import { checkStrike, dipDirectionFromStrike, formatAzimuth, strikeDipSymbol } from './geo/attitude.js';
-import { checkStationInput, nextStationId, localTimeText, FEATURE_TYPES } from './geo/station.js';
+import {
+  checkStationInput, nextStationId, localTimeText, normalizeStation, nameSuggestions, FEATURE_TYPES, ATTITUDE_OPTIONAL,
+} from './geo/station.js';
 import { stationsToCsv, stationsToGeoJson, stationsToKml } from './geo/export.js';
 import { loadStations, saveStation, deleteStation, getMeta, setMeta } from './storage.js';
 import { shareOrDownload, fileStamp } from './share.js';
@@ -15,6 +17,7 @@ const FEATURE_COLOURS = {
   joint: '#1d4ed8',
   fault: '#111111',
   vein: '#0f766e',
+  contact: '#b45309',
   other: '#5c5c5c',
 };
 const TEST_COLOUR = '#ff00d4'; // all TEST DATA stations, whatever their feature type
@@ -139,6 +142,9 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       ['Strike/dip', attitudeText(s)],
       ['Younging known', s.younging],
       ['Lithology', s.lithology || '—'],
+      ...(s.featureType === 'contact'
+        ? [['Younger / upper unit', s.unitUpper || '—'], ['Older / lower unit', s.unitLower || '—']]
+        : []),
       ['Notes', s.notes || '—'],
       ['Lat / Long', `${s.latitude.toFixed(6)}°, ${s.longitude.toFixed(6)}°`],
       ['GPS accuracy', s.accuracy === null ? 'not recorded' : `± ${s.accuracy} m`],
@@ -267,7 +273,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       el.title.textContent = `Edit station ${station.stationId}`;
       draftTime = null;
       el.datetime.textContent = `Recorded ${localTimeText(station.createdAt, station.tzOffsetMinutes)}`;
-      for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'strike', 'dip', 'lithology', 'notes']) {
+      for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'strike', 'dip', 'lithology', 'notes', 'unitUpper', 'unitLower']) {
         const v = station[name];
         field(name).value = v === null || v === undefined ? '' : String(v);
       }
@@ -285,10 +291,25 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       field('younging').value = 'unknown';
       fillLocationFromGps();
     }
+    updateNameSuggestions();
+    updateFeatureFields();
     updateElevation();
     updateDipDirection();
     el.sheet.hidden = false;
     el.sheet.scrollTop = 0;
+  }
+
+  /** Shows the fields that belong to the chosen feature type. */
+  function updateFeatureFields() {
+    const type = field('featureType').value;
+    $('f-contact').hidden = type !== 'contact';
+    $('f-attitude-optional').hidden = !ATTITUDE_OPTIONAL.includes(type);
+  }
+
+  /** Fills the suggestion list for lithology and unit names from names already used. */
+  function updateNameSuggestions() {
+    const list = $('names-list');
+    list.replaceChildren(...nameSuggestions(stations).map((n) => new Option(n)));
   }
 
   function closeForm() {
@@ -317,7 +338,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     event.preventDefault();
     clearErrors();
     const raw = {};
-    for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'featureType', 'strike', 'dip', 'younging', 'lithology', 'notes']) {
+    for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'featureType', 'strike', 'dip', 'younging', 'lithology', 'notes', 'unitUpper', 'unitLower']) {
       raw[name] = field(name).value;
     }
     const otherIds = stations.filter((s) => !editing || s.uuid !== editing.uuid).map((s) => s.stationId);
@@ -497,6 +518,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   el.useLocation.addEventListener('click', fillLocationFromGps);
   el.form.addEventListener('submit', submitForm);
   field('strike').addEventListener('input', updateDipDirection);
+  field('featureType').addEventListener('change', updateFeatureFields);
   field('latitude').addEventListener('input', updateElevation);
   field('longitude').addEventListener('input', updateElevation);
   for (const name of ['latitude', 'longitude', 'accuracy']) {
@@ -516,7 +538,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     async load(persistResult) {
       storageProtected = persistResult;
       try {
-        stations = await loadStations();
+        stations = (await loadStations()).map(normalizeStation);
         lastExport = (await getMeta('lastExport')) || null;
       } catch (e) {
         el.counter.textContent = `Saved stations could not be read: ${e.message || e.name}`;
