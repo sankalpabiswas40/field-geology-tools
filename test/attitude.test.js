@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeAzimuth, dipDirectionFromStrike, strikeFromDipDirection, parseNumber,
-  checkStrike, checkDip, formatAzimuth, formatAttitude, strikeDipSymbol,
+  checkStrike, checkDip, formatAzimuth, formatAttitude, strikeDipSymbol, checkTrend, checkPlunge, lineationSymbol,
 } from '../js/geo/attitude.js';
 
 test('right-hand rule: dip direction = strike + 90°', () => {
@@ -98,4 +98,32 @@ test('vertical and horizontal planes', () => {
   const h = strikeDipSymbol(123, 0, { size: 40, tickLength: 10 });
   assert.equal(h.kind, 'horizontal');
   assert.deepEqual(h.circle, { cx: 20, cy: 20, r: 10 });
+});
+
+test('trend and plunge checks', () => {
+  assert.deepEqual(checkTrend('040'), { ok: true, value: 40 });
+  assert.deepEqual(checkTrend('360'), { ok: true, value: 0 });
+  assert.deepEqual(checkTrend('0'), { ok: true, value: 0 });
+  assert.match(checkTrend('361').message, /361° is not possible/);
+  assert.match(checkTrend('-1').message, /not possible/);
+  assert.match(checkTrend('').message, /missing/);
+  assert.match(checkTrend('NE').message, /not a number/);
+  assert.deepEqual(checkPlunge('0'), { ok: true, value: 0 });
+  assert.deepEqual(checkPlunge('90'), { ok: true, value: 90 });
+  assert.deepEqual(checkPlunge('15,5'), { ok: true, value: 15.5 });
+  assert.match(checkPlunge('91').message, /91° is not possible/);
+  assert.match(checkPlunge('-3').message, /not possible/);
+  assert.match(checkPlunge('').message, /missing/);
+  assert.match(checkPlunge('x').message, /not a number/);
+});
+
+test('lineation arrow points along the trend', () => {
+  const east = lineationSymbol(90, 20, { size: 40, length: 15, headLength: 5 });
+  assert.equal(east.kind, 'arrow');
+  assert.ok(near(east.head[0][0], 35) && near(east.head[0][1], 20), 'tip to the east');
+  const north = lineationSymbol(0, 20, { size: 40, length: 15, headLength: 5 });
+  assert.ok(near(north.head[0][0], 20) && near(north.head[0][1], 5), 'tip up = north');
+  const sw = lineationSymbol(225, 10, { size: 40, length: 10, headLength: 4 });
+  assert.ok(sw.head[0][0] < 20 && sw.head[0][1] > 20, 'tip to the south-west');
+  assert.equal(lineationSymbol(123, 90).kind, 'vertical');
 });

@@ -85,7 +85,7 @@ export function initStereonet({ getStations, area, showTab, showMessage }) {
       box.checked = ticked.has(s.uuid);
       box.addEventListener('change', () => { if (box.checked) ticked.add(s.uuid); else ticked.delete(s.uuid); render(false); });
       const att = s.featureType === 'lineation'
-        ? `${f0(s.trend ?? 0)}/${s.plunge ?? '?'} lineation`
+        ? (s.trend === null || s.trend === undefined ? 'lineation, not measured' : `${f0(s.trend)}/${s.plunge} ${s.lineationType}`)
         : s.strike === null ? 'no attitude' : `${f0(s.strike)}/${s.dip}`;
       label.append(box, ` ${s.isTest ? 'TEST ' : ''}${s.stationId} · ${att}`);
       el.ticks.append(label);

@@ -25,6 +25,9 @@ const COLUMNS = [
   ['strike_rhr', (s) => s.strike],
   ['dip', (s) => s.dip],
   ['dip_direction', (s) => s.dipDirection],
+  ['lineation_type', (s) => s.lineationType],
+  ['trend', (s) => s.trend],
+  ['plunge', (s) => s.plunge],
   ['younging_known', (s) => s.younging],
   ['lithology', (s) => s.lithology],
   ['unit_upper_younger', (s) => s.unitUpper],
@@ -82,7 +85,9 @@ function xml(v) {
 export function stationsToKml(stations, documentName = 'Field stations') {
   const placemarks = stations.map((s) => {
     const p = properties(s);
-    const attitude = s.strike === null ? 'no attitude' : `${s.strike}/${s.dip}, dip direction ${s.dipDirection}`;
+    const attitude = s.featureType === 'lineation' && s.trend !== null && s.trend !== undefined
+      ? `${s.lineationType} ${s.trend}/${s.plunge} (trend/plunge)`
+      : s.strike === null || s.strike === undefined ? 'no attitude' : `${s.strike}/${s.dip}, dip direction ${s.dipDirection}`;
     const data = COLUMNS.map(([name]) =>
       `        <Data name="${name}"><value>${xml(p[name])}</value></Data>`).join('\n');
     return [

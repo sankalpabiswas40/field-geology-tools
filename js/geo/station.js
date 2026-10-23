@@ -1,9 +1,10 @@
 // Field station data: checking what was typed in the form, and station numbering.
 // Pure functions only: no browser code.
 
-import { parseNumber, checkStrike, checkDip, dipDirectionFromStrike } from './attitude.js';
+import { parseNumber, checkStrike, checkDip, checkTrend, checkPlunge, dipDirectionFromStrike } from './attitude.js';
 
-export const FEATURE_TYPES = ['bedding', 'foliation', 'joint', 'fault', 'vein', 'contact', 'other'];
+export const FEATURE_TYPES = ['bedding', 'foliation', 'joint', 'fault', 'vein', 'contact', 'lineation', 'other'];
+export const LINEATION_TYPES = ['hinge line', 'intersection lineation', 'mineral lineation', 'slickenline', 'other'];
 
 /** Feature types where strike and dip may be left empty (both together). */
 export const ATTITUDE_OPTIONAL = ['contact', 'other'];
@@ -12,7 +13,8 @@ export const YOUNGING_OPTIONS = ['yes', 'no', 'unknown'];
 /**
  * Checks the station form. `input` holds the raw text from each box:
  *   { stationId, latitude, longitude, accuracy, featureType, strike, dip, younging, lithology, notes,
- *     unitUpper, unitLower }   (the two unit names are used for contacts only)
+ *     unitUpper, unitLower,      (the two unit names are used for contacts only)
+ *     lineationType, trend, plunge }   (used for lineations only, instead of strike and dip)
  * `otherIds` are the IDs of all OTHER stations (to stop duplicates).
  * Returns { ok: true, values } or { ok: false, errors: [{ field, message }] }.
  * Strike and dip are required, except for "contact" and "other" where both may be left empty.
@@ -47,10 +49,23 @@ export function checkStationInput(input, otherIds = []) {
 
   let strike = null;
   let dip = null;
+  let trend = null;
+  let plunge = null;
+  let lineationType = null;
+  if (featureType === 'lineation') {
+    if (!LINEATION_TYPES.includes(input.lineationType)) add('lineationType', 'Choose the kind of lineation.');
+    else lineationType = input.lineationType;
+    const t = checkTrend(input.trend);
+    if (t.ok) trend = t.value; else add('trend', t.message);
+    const p = checkPlunge(input.plunge);
+    if (p.ok) plunge = p.value; else add('plunge', p.message);
+  }
   const strikeEmpty = parseNumber(input.strike) === null;
   const dipEmpty = parseNumber(input.dip) === null;
   const optional = ATTITUDE_OPTIONAL.includes(featureType);
-  if (optional && strikeEmpty && dipEmpty) {
+  if (featureType === 'lineation') {
+    // Lineations use trend and plunge (checked above), never strike and dip.
+  } else if (optional && strikeEmpty && dipEmpty) {
     // No attitude measured: allowed for contacts and "other".
   } else if (optional && strikeEmpty !== dipEmpty) {
     add(strikeEmpty ? 'strike' : 'dip', 'Give both strike and dip, or leave both empty.');
@@ -81,6 +96,9 @@ export function checkStationInput(input, otherIds = []) {
       notes: String(input.notes ?? '').trim(),
       unitUpper: featureType === 'contact' ? String(input.unitUpper ?? '').trim() || null : null,
       unitLower: featureType === 'contact' ? String(input.unitLower ?? '').trim() || null : null,
+      lineationType,
+      trend,
+      plunge,
     },
   };
 }
@@ -126,6 +144,9 @@ export function localTimeText(isoUtc, offsetMinutes) {
 export const NEW_FIELD_DEFAULTS = {
   unitUpper: null,
   unitLower: null,
+  lineationType: null,
+  trend: null,
+  plunge: null,
   isTest: false,
 };
 

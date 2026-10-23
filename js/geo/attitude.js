@@ -111,3 +111,49 @@ export function strikeDipSymbol(strike, dip, { size = 44, strikeLength = 32, tic
     label: { x: round(c + d.x * labelDist), y: round(c + d.y * labelDist) },
   };
 }
+
+/** Checks a typed lineation trend. Returns { ok: true, value } (0 ≤ value < 360) or { ok: false, message }. */
+export function checkTrend(text) {
+  const v = parseNumber(text);
+  if (v === null) return { ok: false, message: 'Trend is missing.' };
+  if (Number.isNaN(v)) return { ok: false, message: `Trend "${text}" is not a number. Type it like 040.` };
+  if (v < 0 || v > 360) return { ok: false, message: `Trend ${v}° is not possible: it must be between 0° and 360°.` };
+  return { ok: true, value: normalizeAzimuth(v) };
+}
+
+/** Checks a typed lineation plunge. Returns { ok: true, value } (0–90) or { ok: false, message }. */
+export function checkPlunge(text) {
+  const v = parseNumber(text);
+  if (v === null) return { ok: false, message: 'Plunge is missing.' };
+  if (Number.isNaN(v)) return { ok: false, message: `Plunge "${text}" is not a number. Type it like 15.` };
+  if (v < 0 || v > 90) {
+    return { ok: false, message: `Plunge ${v}° is not possible: plunge must be between 0° (horizontal) and 90° (vertical).` };
+  }
+  return { ok: true, value: v };
+}
+
+/**
+ * Map symbol for a lineation: an arrow from the station towards the trend, in screen pixels
+ * (x east, y south). A vertical lineation (plunge 90°) is a small circle with a dot instead.
+ * Returns { kind, shaft: [x1, y1, x2, y2], head: [[x, y], [x, y], [x, y]] | null, circle?, label: { x, y } }.
+ */
+export function lineationSymbol(trend, plunge, { size = 44, length = 17, headLength = 7 } = {}) {
+  const c = size / 2;
+  const round = (v) => Math.round(v * 100) / 100;
+  if (plunge === 90) {
+    return { kind: 'vertical', shaft: null, head: null, circle: { cx: c, cy: c, r: 8 }, label: { x: round(c + 12), y: round(c - 10) } };
+  }
+  const ux = Math.sin(trend * DEG);
+  const uy = -Math.cos(trend * DEG);
+  const tipX = c + ux * length;
+  const tipY = c + uy * length;
+  const backX = tipX - ux * headLength;
+  const backY = tipY - uy * headLength;
+  const half = headLength * 0.55;
+  return {
+    kind: 'arrow',
+    shaft: [c, c, round(backX), round(backY)].map(round),
+    head: [[round(tipX), round(tipY)], [round(backX - uy * half), round(backY + ux * half)], [round(backX + uy * half), round(backY - ux * half)]],
+    label: { x: round(c + ux * (length + 8)), y: round(c + uy * (length + 8)) },
+  };
+}

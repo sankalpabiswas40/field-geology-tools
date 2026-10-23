@@ -17,6 +17,7 @@ test('a complete, valid station is accepted and dip direction is stored', () => 
     stationId: 'S001', latitude: 46.5444, longitude: 8.0833, accuracy: 6,
     featureType: 'bedding', strike: 45, dip: 30, dipDirection: 135, younging: 'unknown',
     lithology: 'sandstone', notes: 'cross-bedded', unitUpper: null, unitLower: null,
+    lineationType: null, trend: null, plunge: null,
   });
 });
 
@@ -131,4 +132,27 @@ test('name suggestions: unique, consistent spelling, no test data, sorted', () =
     { lithology: 'test', isTest: true }, { lithology: '' }, { lithology: null },
   ]);
   assert.deepEqual(list, ['basalt', 'Granite', 'Sandstone', 'Upper Shale']);
+});
+
+test('lineations use trend/plunge and a kind, never strike/dip', () => {
+  const lin = { ...good, featureType: 'lineation', strike: '', dip: '', lineationType: 'hinge line', trend: '040', plunge: '15' };
+  const r = checkStationInput(lin);
+  assert.equal(r.ok, true);
+  assert.equal(r.values.trend, 40);
+  assert.equal(r.values.plunge, 15);
+  assert.equal(r.values.lineationType, 'hinge line');
+  assert.equal(r.values.strike, null);
+  assert.equal(r.values.dipDirection, null);
+  // Strike/dip typed by mistake are ignored for lineations.
+  assert.equal(checkStationInput({ ...lin, strike: '400', dip: '95' }).ok, true);
+  assert.equal(checkStationInput({ ...lin, trend: '360' }).values.trend, 0);
+  assert.equal(checkStationInput({ ...lin, plunge: '0' }).values.plunge, 0);
+  assert.equal(checkStationInput({ ...lin, plunge: '90' }).values.plunge, 90);
+  assert.deepEqual(fieldsWithErrors(checkStationInput({ ...lin, trend: '400', plunge: '95' })), ['trend', 'plunge']);
+  assert.deepEqual(fieldsWithErrors(checkStationInput({ ...lin, trend: '', plunge: 'abc' })), ['trend', 'plunge']);
+  assert.deepEqual(fieldsWithErrors(checkStationInput({ ...lin, lineationType: '' })), ['lineationType']);
+  // Planes never keep trend/plunge.
+  const plane = checkStationInput({ ...good, trend: '10', plunge: '10', lineationType: 'slickenline' });
+  assert.equal(plane.values.trend, null);
+  assert.equal(plane.values.lineationType, null);
 });

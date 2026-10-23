@@ -93,6 +93,7 @@
         </fieldset>
         <label class="check"><input type="checkbox" id="sn-tests"> Include test stations</label>
         <label class="check"><input type="checkbox" id="sn-planes"> Draw planes as great circles</label>
+        <label class="check"><input type="checkbox" id="sn-lineations" checked> Show lineations (triangles)</label>
       </div>
       <div class="stereonet-output">
         <div id="sn-figure" class="stereonet-figure"></div>
@@ -151,7 +152,29 @@
         </label>
       </fieldset>
 
-      <fieldset class="group">
+      <fieldset id="f-lineation" class="group" hidden>
+        <legend>Lineation (trend and plunge)</legend>
+        <label class="field">Kind of lineation
+          <select name="lineationType">
+            <option value="">Choose…</option>
+            <option value="hinge line">Hinge line</option>
+            <option value="intersection lineation">Intersection lineation</option>
+            <option value="mineral lineation">Mineral lineation</option>
+            <option value="slickenline">Slickenline</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <div class="row">
+          <label class="field">Trend (0–360°)
+            <input name="trend" type="text" inputmode="decimal" placeholder="e.g. 040">
+          </label>
+          <label class="field">Plunge (0–90°)
+            <input name="plunge" type="text" inputmode="decimal" placeholder="e.g. 15">
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset id="f-attitude" class="group">
         <legend>Attitude (right-hand rule: the plane dips to the right of strike)</legend>
         <p id="f-attitude-optional" class="field-note" hidden>Optional for this feature type: fill in both or leave both empty.</p>
         <div class="row">

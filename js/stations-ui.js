@@ -2,7 +2,7 @@
 
 import { elevationAt } from './geo/raster.js';
 import { toUtm } from './geo/utm.js';
-import { checkStrike, dipDirectionFromStrike, formatAzimuth, strikeDipSymbol } from './geo/attitude.js';
+import { checkStrike, dipDirectionFromStrike, formatAzimuth, strikeDipSymbol, lineationSymbol } from './geo/attitude.js';
 import {
   checkStationInput, nextStationId, localTimeText, normalizeStation, nameSuggestions, FEATURE_TYPES, ATTITUDE_OPTIONAL,
 } from './geo/station.js';
@@ -18,6 +18,7 @@ const FEATURE_COLOURS = {
   fault: '#111111',
   vein: '#0f766e',
   contact: '#b45309',
+  lineation: '#0369a1',
   other: '#5c5c5c',
 };
 const TEST_COLOUR = '#ff00d4'; // all TEST DATA stations, whatever their feature type
@@ -84,7 +85,22 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     const size = 44;
     const colour = station.isTest ? TEST_COLOUR : FEATURE_COLOURS[station.featureType] || FEATURE_COLOURS.other;
     const parts = [];
-    if (station.strike !== null) {
+    if (station.featureType === 'lineation' && station.trend !== null && station.trend !== undefined) {
+      const sym = lineationSymbol(station.trend, station.plunge, { size });
+      if (sym.circle) {
+        const { cx, cy, r } = sym.circle;
+        parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fff" stroke-width="5"/>`);
+        parts.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colour}" stroke-width="2.5"/>`);
+      } else {
+        const [x1, y1, x2, y2] = sym.shaft;
+        const head = sym.head.map((p) => p.join(',')).join(' ');
+        parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`);
+        parts.push(`<polygon points="${head}" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>`);
+        parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${colour}" stroke-width="2.5" stroke-linecap="round"/>`);
+        parts.push(`<polygon points="${head}" fill="${colour}"/>`);
+      }
+      parts.push(`<text x="${sym.label.x}" y="${sym.label.y}" class="dip-label" fill="${colour}">${station.plunge}</text>`);
+    } else if (station.strike !== null && station.strike !== undefined) {
       const sym = strikeDipSymbol(station.strike, station.dip, { size });
       const drawLines = (stroke, width) => sym.lines.map(([x1, y1, x2, y2]) =>
         `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round"/>`).join('');
@@ -122,7 +138,11 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   }
 
   function attitudeText(s) {
-    if (s.strike === null) return 'not measured';
+    if (s.featureType === 'lineation') {
+      return s.trend === null || s.trend === undefined ? 'not measured'
+        : `${s.lineationType}: ${formatAzimuth(s.trend)}/${s.plunge} (trend/plunge)`;
+    }
+    if (s.strike === null || s.strike === undefined) return 'not measured';
     return `${formatAzimuth(s.strike)}/${s.dip} (RHR), dip direction ${formatAzimuth(s.dipDirection)}`;
   }
 
@@ -139,7 +159,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     h.textContent = `${s.isTest ? 'TEST DATA · ' : ''}${s.stationId} · ${s.featureType}`;
     const dl = document.createElement('dl');
     const rows = [
-      ['Strike/dip', attitudeText(s)],
+      [s.featureType === 'lineation' ? 'Lineation' : 'Strike/dip', attitudeText(s)],
       ['Younging known', s.younging],
       ['Lithology', s.lithology || '—'],
       ...(s.featureType === 'contact'
@@ -273,7 +293,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       el.title.textContent = `Edit station ${station.stationId}`;
       draftTime = null;
       el.datetime.textContent = `Recorded ${localTimeText(station.createdAt, station.tzOffsetMinutes)}`;
-      for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'strike', 'dip', 'lithology', 'notes', 'unitUpper', 'unitLower']) {
+      for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'strike', 'dip', 'lithology', 'notes', 'unitUpper', 'unitLower', 'trend', 'plunge', 'lineationType']) {
         const v = station[name];
         field(name).value = v === null || v === undefined ? '' : String(v);
       }
@@ -303,6 +323,8 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   function updateFeatureFields() {
     const type = field('featureType').value;
     $('f-contact').hidden = type !== 'contact';
+    $('f-lineation').hidden = type !== 'lineation';
+    $('f-attitude').hidden = type === 'lineation';
     $('f-attitude-optional').hidden = !ATTITUDE_OPTIONAL.includes(type);
   }
 
@@ -338,7 +360,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     event.preventDefault();
     clearErrors();
     const raw = {};
-    for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'featureType', 'strike', 'dip', 'younging', 'lithology', 'notes', 'unitUpper', 'unitLower']) {
+    for (const name of ['stationId', 'latitude', 'longitude', 'accuracy', 'featureType', 'strike', 'dip', 'younging', 'lithology', 'notes', 'unitUpper', 'unitLower', 'trend', 'plunge', 'lineationType']) {
       raw[name] = field(name).value;
     }
     const otherIds = stations.filter((s) => !editing || s.uuid !== editing.uuid).map((s) => s.stationId);
