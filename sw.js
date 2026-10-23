@@ -1,7 +1,7 @@
 // Service worker: keeps a copy of every app file on the device so the app opens offline.
 // IMPORTANT: whenever ANY file changes, increase CACHE_VERSION so devices download the update.
 
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 const CACHE_NAME = `field-geology-tools-v${CACHE_VERSION}`;
 
 // Every file the app needs, as paths relative to this file.
@@ -22,11 +22,13 @@ const APP_FILES = [
   './js/geo/contour.js',
   './js/geo/ellipsoid.js',
   './js/geo/export.js',
+  './js/geo/fold.js',
   './js/geo/hillshade.js',
   './js/geo/mercator.js',
   './js/geo/plane.js',
   './js/geo/raster.js',
   './js/geo/station.js',
+  './js/geo/test-stations.js',
   './js/geo/trace.js',
   './js/geo/utm.js',
   './vendor/leaflet/leaflet.js',

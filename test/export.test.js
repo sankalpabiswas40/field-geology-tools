@@ -14,7 +14,7 @@ const stations = [
     stationId: 'S<2>', createdAt: '2026-10-23T09:00:00.000Z', tzOffsetMinutes: 330,
     latitude: 46.55, longitude: 8.09, accuracy: null, elevation: null, elevationNote: 'No DEM loaded',
     featureType: 'other', strike: null, dip: null, dipDirection: null, younging: 'unknown',
-    lithology: '', notes: '', utm: null,
+    lithology: '', notes: '', utm: null, isTest: true,
   },
 ];
 
@@ -22,7 +22,10 @@ test('CSV has a header, explicit dip direction, and quotes awkward text', () => 
   const csv = stationsToCsv(stations);
   assert.ok(csv.startsWith('﻿'));
   const lines = csv.slice(1).split('\r\n');
-  assert.equal(lines[0].split(',').length, 18);
+  assert.equal(lines[0].split(',').length, 19);
+  assert.ok(lines[0].endsWith(',notes,isTest'));
+  assert.ok(lines[1].endsWith(',false'), 'real station');
+  assert.ok(lines[2].endsWith(',true'), 'test station');
   assert.match(lines[0], /strike_rhr,dip,dip_direction/);
   assert.match(lines[1], /^S001,2026-10-23T08:35:00.000Z,2026-10-23 14:05 \(UTC\+05:30\),46.5444,-8.0833,6,1900,,29N,570000,5154951,bedding,45,30,135,yes,/);
   assert.match(csv, /"sandstone, ""red"""/);
@@ -39,6 +42,8 @@ test('GeoJSON is longitude-first WGS84 points with all properties', () => {
   assert.equal(gj.features[0].properties.dip_direction, 135);
   assert.equal(gj.features[1].properties.strike_rhr, null);
   assert.equal(gj.features[1].properties.elevation_note, 'No DEM loaded');
+  assert.equal(gj.features[0].properties.isTest, false);
+  assert.equal(gj.features[1].properties.isTest, true);
 });
 
 test('KML has one placemark per station, escaped text, lon,lat coordinates', () => {
@@ -49,6 +54,7 @@ test('KML has one placemark per station, escaped text, lon,lat coordinates', () 
   assert.match(kml, /bedding: 45\/30, dip direction 135/);
   assert.match(kml, /other: no attitude/);
   assert.match(kml, /<Data name="dip_direction"><value>135<\/value><\/Data>/);
+  assert.match(kml, /<Data name="isTest"><value>true<\/value><\/Data>/);
 });
 
 test('trace KML: one placemark per trace, labelled as a prediction', () => {

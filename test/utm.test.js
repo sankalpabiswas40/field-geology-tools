@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { utmZone, centralMeridian, toUtm } from '../js/geo/utm.js';
+import { utmZone, centralMeridian, toUtm, fromUtm } from '../js/geo/utm.js';
 
 // proj4js (vendored) is the reference we check our UTM maths against.
 const proj4 = createRequire(import.meta.url)('../vendor/proj4/proj4.js');
@@ -48,6 +48,20 @@ test('matches proj4js to within 1 mm across the globe', () => {
       const [e, n] = proj4('EPSG:4326', def, [lon, lat]);
       assert.ok(Math.abs(u.easting - e) < 0.001, `easting at ${lat},${lon}: ${u.easting} vs ${e}`);
       assert.ok(Math.abs(u.northing - n) < 0.001, `northing at ${lat},${lon}: ${u.northing} vs ${n}`);
+    }
+  }
+});
+
+test('UTM → lat/long matches proj4js and round-trips to well under 1 mm', () => {
+  for (let lat = -79; lat <= 83; lat += 7.3) {
+    for (let lon = -179; lon <= 179; lon += 13.7) {
+      const u = toUtm(lat, lon);
+      const back = fromUtm(u.easting, u.northing, u.zone, u.hemisphere);
+      assert.ok(Math.abs(back.lat - lat) < 1e-9, `lat ${lat},${lon} → ${back.lat}`);
+      assert.ok(Math.abs(back.lon - lon) < 1e-9, `lon ${lat},${lon} → ${back.lon}`);
+      const def = `+proj=utm +zone=${u.zone}${u.hemisphere === 'S' ? ' +south' : ''} +datum=WGS84 +units=m +no_defs`;
+      const [plon, plat] = proj4(def, 'EPSG:4326', [u.easting, u.northing]);
+      assert.ok(Math.abs(plat - lat) < 1e-8 && Math.abs(plon - lon) < 1e-8, `proj4 at ${lat},${lon}`);
     }
   }
 });

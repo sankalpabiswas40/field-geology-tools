@@ -7,6 +7,7 @@ import { checkStationInput, nextStationId, localTimeText, FEATURE_TYPES } from '
 import { stationsToCsv, stationsToGeoJson, stationsToKml } from './geo/export.js';
 import { loadStations, saveStation, deleteStation, getMeta, setMeta } from './storage.js';
 import { shareOrDownload, fileStamp } from './share.js';
+import { placeTestStations } from './geo/test-stations.js';
 
 const FEATURE_COLOURS = {
   bedding: '#c1121f',
@@ -16,6 +17,7 @@ const FEATURE_COLOURS = {
   vein: '#0f766e',
   other: '#5c5c5c',
 };
+const TEST_COLOUR = '#ff00d4'; // all TEST DATA stations, whatever their feature type
 
 const $ = (id) => document.getElementById(id);
 
@@ -63,7 +65,8 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       ? last.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
       : 'never';
     const notExported = stations.filter((s) => !last || new Date(s.updatedAt || s.createdAt) > last).length;
-    let text = `${n} station${n === 1 ? '' : 's'} saved, last export: ${lastText}`;
+    const tests = stations.filter((s) => s.isTest === true).length;
+    let text = `${n} station${n === 1 ? '' : 's'} saved${tests ? ` (${tests} of them TEST DATA)` : ''}, last export: ${lastText}`;
     if (notExported > 0) text += ` — ${notExported} not exported yet`;
     if (storageProtected === false) text += '. This device may clear app data when short of space, so export often.';
     el.counter.textContent = text;
@@ -74,7 +77,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
 
   function symbolSvg(station) {
     const size = 44;
-    const colour = FEATURE_COLOURS[station.featureType] || FEATURE_COLOURS.other;
+    const colour = station.isTest ? TEST_COLOUR : FEATURE_COLOURS[station.featureType] || FEATURE_COLOURS.other;
     const parts = [];
     if (station.strike !== null) {
       const sym = strikeDipSymbol(station.strike, station.dip, { size });
@@ -128,7 +131,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     const box = document.createElement('div');
     box.className = 'station-popup';
     const h = document.createElement('h3');
-    h.textContent = `${s.stationId} · ${s.featureType}`;
+    h.textContent = `${s.isTest ? 'TEST DATA · ' : ''}${s.stationId} · ${s.featureType}`;
     const dl = document.createElement('dl');
     const rows = [
       ['Strike/dip', attitudeText(s)],
@@ -341,6 +344,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
       elevationNote: elev.note,
       elevationDem: elev.demName || null,
       utm,
+      isTest: editing ? editing.isTest === true : false,
     };
     try {
       await saveStation(station);
@@ -403,10 +407,90 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     }
   }
 
+  // ---------- Test data ----------
+
+  async function addTestStations() {
+    const dem = getDem();
+    if (!dem) {
+      showMessage('Load a DEM first: the test stations are placed around its centre.', 'error');
+      return;
+    }
+    if (stations.some((s) => s.isTest === true)) {
+      showMessage('Test stations are already loaded. Use "Delete all test stations" first if you want fresh ones.', 'error');
+      return;
+    }
+    const { stations: placed, problems } = placeTestStations(dem.grid, dem.elevation);
+    const usedIds = new Set(stations.map((s) => s.stationId));
+    const added = [];
+    for (const p of placed) {
+      if (usedIds.has(p.stationId)) {
+        problems.push({ stationId: p.stationId, message: `${p.stationId} not added: you already have a station called ${p.stationId}.` });
+        continue;
+      }
+      const now = new Date();
+      let utm = null;
+      try { utm = toUtm(p.latitude, p.longitude); } catch { utm = null; }
+      const station = {
+        ...p,
+        uuid: newUuid(),
+        createdAt: now.toISOString(),
+        tzOffsetMinutes: -now.getTimezoneOffset(),
+        updatedAt: null,
+        elevationNote: null,
+        elevationDem: dem.name,
+        utm,
+      };
+      try {
+        await saveStation(station);
+      } catch (e) {
+        problems.push({ stationId: p.stationId, message: `${p.stationId} not added: could not save (${e.message || e.name}).` });
+        continue;
+      }
+      stations.push(station);
+      drawStation(station);
+      added.push(station);
+    }
+    updateCounter();
+    if (added.length) {
+      map.fitBounds(L.latLngBounds(added.map((s) => [s.latitude, s.longitude])).pad(0.3), { animate: false });
+    }
+    const problemText = problems.map((p) => p.message).join(' ');
+    showMessage(`Added ${added.length} TEST DATA station${added.length === 1 ? '' : 's'} (pink) around the DEM centre.` +
+      (problemText ? ` ${problemText}` : ''), problems.length ? 'error' : 'ok');
+  }
+
+  async function deleteTestStations() {
+    const tests = stations.filter((s) => s.isTest === true);
+    if (!tests.length) {
+      showMessage('There are no test stations to delete.', 'error');
+      return;
+    }
+    if (!window.confirm(`Delete all ${tests.length} test stations? Your real stations will not be touched.`)) return;
+    map.closePopup();
+    let failed = 0;
+    for (const s of tests) {
+      try {
+        await deleteStation(s.uuid);
+      } catch {
+        failed++;
+        continue;
+      }
+      stations = stations.filter((x) => x.uuid !== s.uuid);
+      layer.removeLayer(markers.get(s.uuid));
+      markers.delete(s.uuid);
+    }
+    updateCounter();
+    showMessage(failed
+      ? `Deleted ${tests.length - failed} test stations; ${failed} could not be deleted. Try again.`
+      : `Deleted all ${tests.length} test stations. Real stations were not touched.`, failed ? 'error' : 'ok');
+  }
+
   // ---------- Wiring ----------
 
   el.newBtn.addEventListener('click', () => openForm(null));
   el.exportBtn.addEventListener('click', exportStations);
+  $('load-test-stations').addEventListener('click', addTestStations);
+  $('delete-test-stations').addEventListener('click', deleteTestStations);
   el.cancel.addEventListener('click', closeForm);
   el.useLocation.addEventListener('click', fillLocationFromGps);
   el.form.addEventListener('submit', submitForm);

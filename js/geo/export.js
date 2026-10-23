@@ -28,6 +28,8 @@ const COLUMNS = [
   ['younging_known', (s) => s.younging],
   ['lithology', (s) => s.lithology],
   ['notes', (s) => s.notes],
+  // Marks built-in TEST DATA so it can never be confused with real field data.
+  ['isTest', (s) => s.isTest === true],
 ];
 
 /** Properties in the same order and with the same names as the CSV columns. */

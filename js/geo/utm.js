@@ -73,3 +73,44 @@ export function toUtm(lat, lon, zone = utmZone(lat, lon)) {
   if (hemisphere === 'S') northing += FALSE_NORTHING_SOUTH;
   return { zone, hemisphere, easting, northing };
 }
+
+const BETA = [
+  n / 2 - (2 / 3) * n * n + (37 / 96) * n ** 3 - (1 / 360) * n ** 4,
+  (1 / 48) * n * n + (1 / 15) * n ** 3 - (437 / 1440) * n ** 4,
+  (17 / 480) * n ** 3 - (37 / 840) * n ** 4,
+  (4397 / 161280) * n ** 4,
+];
+
+/**
+ * Converts UTM (metres) back to WGS84 latitude/longitude in degrees.
+ * hemisphere: 'N' or 'S' (which false northing was used). Returns { lat, lon }.
+ */
+export function fromUtm(easting, northing, zone, hemisphere) {
+  const xi = (northing - (hemisphere === 'S' ? FALSE_NORTHING_SOUTH : 0)) / (K0 * A);
+  const eta = (easting - FALSE_EASTING) / (K0 * A);
+
+  let xiP = xi;
+  let etaP = eta;
+  for (let j = 1; j <= BETA.length; j++) {
+    xiP -= BETA[j - 1] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta);
+    etaP -= BETA[j - 1] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta);
+  }
+
+  const sinhEtaP = Math.sinh(etaP);
+  const cosXiP = Math.cos(xiP);
+  const tauP = Math.sin(xiP) / Math.sqrt(sinhEtaP * sinhEtaP + cosXiP * cosXiP);
+  const lambda = Math.atan2(sinhEtaP, cosXiP);
+
+  // Solve for tan(latitude) by Newton's method (Karney 2011); converges in 2–3 steps.
+  const e2 = E * E;
+  let tau = tauP;
+  for (let i = 0; i < 10; i++) {
+    const sigma = Math.sinh(E * Math.atanh((E * tau) / Math.sqrt(1 + tau * tau)));
+    const tauI = tau * Math.sqrt(1 + sigma * sigma) - sigma * Math.sqrt(1 + tau * tau);
+    const step = ((tauP - tauI) / Math.sqrt(1 + tauI * tauI)) *
+      ((1 + (1 - e2) * tau * tau) / ((1 - e2) * Math.sqrt(1 + tau * tau)));
+    tau += step;
+    if (Math.abs(step) < 1e-14) break;
+  }
+  return { lat: Math.atan(tau) / DEG, lon: centralMeridian(zone) + lambda / DEG };
+}
