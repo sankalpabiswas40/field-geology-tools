@@ -16,7 +16,12 @@
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <div class="app">
+  <div class="shell">
+  <nav class="tabs" role="tablist" aria-label="Screens">
+    <button type="button" role="tab" class="tab" data-view="map" aria-selected="true">Map</button>
+    <button type="button" role="tab" class="tab" data-view="stereonet" aria-selected="false">Stereonet</button>
+  </nav>
+  <div id="view-map" class="app">
     <aside class="panel">
       <div class="toolbar">
         <button id="load-dem" class="btn" type="button">Load DEM</button>
@@ -61,6 +66,44 @@
       </details>
     </aside>
     <main id="map" class="map" aria-label="Map"></main>
+  </div>
+
+  <!-- Stereonet tab -->
+  <section id="view-stereonet" class="page" hidden>
+    <div class="page-body stereonet-layout">
+      <div class="stereonet-controls">
+        <h2>Stereonet</h2>
+        <p class="field-note">Lower hemisphere, equal area (Schmidt net). Dots are poles to planes.</p>
+        <label class="field">Feature type
+          <select id="sn-feature"></select>
+        </label>
+        <fieldset class="group">
+          <legend>Which stations</legend>
+          <div class="segmented">
+            <label><input type="radio" name="sn-set" value="all" checked><span>All</span></label>
+            <label><input type="radio" name="sn-set" value="ticked"><span>Ticked</span></label>
+            <label><input type="radio" name="sn-set" value="area"><span>In area</span></label>
+          </div>
+          <div id="sn-ticks" class="tick-list" hidden></div>
+          <div id="sn-area-controls" class="settings" hidden>
+            <p id="sn-area-note" class="field-note"></p>
+            <button id="sn-draw-area" class="btn secondary" type="button">Draw area on map</button>
+            <button id="sn-clear-area" class="btn secondary" type="button">Clear area</button>
+          </div>
+        </fieldset>
+        <label class="check"><input type="checkbox" id="sn-tests"> Include test stations</label>
+        <label class="check"><input type="checkbox" id="sn-planes"> Draw planes as great circles</label>
+      </div>
+      <div class="stereonet-output">
+        <div id="sn-figure" class="stereonet-figure"></div>
+        <div id="sn-results" class="results"></div>
+        <div class="toolbar">
+          <button id="sn-export-png" class="btn secondary" type="button">Export PNG</button>
+          <button id="sn-export-svg" class="btn secondary" type="button">Export SVG</button>
+        </div>
+      </div>
+    </div>
+  </section>
   </div>
 
   <!-- Station form: covers the screen while open. -->

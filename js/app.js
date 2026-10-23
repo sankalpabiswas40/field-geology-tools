@@ -9,6 +9,8 @@ import { createHillshadeLayer } from './hillshade-layer.js';
 import { saveLastDem, loadLastDem, askForPersistentStorage } from './storage.js';
 import { initStations } from './stations-ui.js';
 import { initTraces } from './trace-ui.js';
+import { initArea } from './area-ui.js';
+import { initStereonet } from './stereonet-ui.js';
 
 const SUN_AZIMUTH = 315;
 const SUN_ALTITUDE = 45;
@@ -51,7 +53,23 @@ L.control.scale({ imperial: false, maxWidth: 160 }).addTo(map);
 
 // ---------- Field stations (see stations-ui.js) ----------
 
+// ---------- Tabs ----------
+
+let currentTab = 'map';
+function showTab(name) {
+  currentTab = name;
+  for (const tab of document.querySelectorAll('.tab')) tab.setAttribute('aria-selected', String(tab.dataset.view === name));
+  for (const view of ['map', 'stereonet', 'help']) {
+    const node = document.getElementById(`view-${view}`);
+    if (node) node.hidden = view !== name;
+  }
+  if (name === 'map') map.invalidateSize();
+  if (name === 'stereonet') stereonetUi.render();
+}
+for (const tab of document.querySelectorAll('.tab')) tab.addEventListener('click', () => showTab(tab.dataset.view));
+
 const tracesUi = initTraces({ map, showMessage, getDem: () => dem });
+const areaUi = initArea({ map, showMessage });
 
 const stationsUi = initStations({
   map,
@@ -59,6 +77,14 @@ const stationsUi = initStations({
   getPosition: () => lastPosition,
   getDem: () => dem,
   onPredictTrace: (station) => tracesUi.predict(station),
+  onStationsChanged: () => { if (currentTab === 'stereonet') stereonetUi.render(); },
+});
+
+const stereonetUi = initStereonet({
+  getStations: () => stationsUi.getStations(),
+  area: areaUi,
+  showTab,
+  showMessage,
 });
 
 // ---------- DEM loading ----------
@@ -276,6 +302,7 @@ async function start() {
   // Ask iOS not to delete our saved stations and DEM when space runs low.
   const persisted = await askForPersistentStorage();
   await stationsUi.load(persisted);
+  await areaUi.load();
 
   let saved;
   try {

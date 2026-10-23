@@ -1,12 +1,12 @@
 // Saving files: the iOS share sheet ("Save to Files") when available, otherwise normal downloads.
 
 /**
- * files: [{ name, text, type }]. Build these BEFORE calling (no waiting), because iOS only
+ * files: [{ name, text, type }] or [{ name, blob, type }] for images. Build these BEFORE calling (no waiting), because iOS only
  * opens the share sheet straight after a tap.
  * Returns 'shared', 'downloaded' or 'cancelled'.
  */
 export async function shareOrDownload(files, title) {
-  const make = (plain) => files.map((f) => new File([f.text], f.name, { type: plain ? 'text/plain' : f.type }));
+  const make = (plain) => files.map((f) => new File([f.blob || f.text], f.name, { type: plain && !f.blob ? 'text/plain' : f.type }));
   const canShare = (list) => navigator.canShare && navigator.canShare({ files: list });
   let list = make(false);
   if (!canShare(list)) list = make(true); // some browsers only share "plain text" files

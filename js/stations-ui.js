@@ -27,8 +27,9 @@ const $ = (id) => document.getElementById(id);
  * getPosition(): latest GPS coords ({ latitude, longitude, accuracy }) or null
  * getDem(): the loaded DEM ({ name, grid, elevation }) or null
  * onPredictTrace(station): called by the "Predict trace" button in a station's popup
+ * onStationsChanged(): called whenever stations are added, edited or deleted
  */
-export function initStations({ map, showMessage, getPosition, getDem, onPredictTrace }) {
+export function initStations({ map, showMessage, getPosition, getDem, onPredictTrace, onStationsChanged }) {
   const el = {
     newBtn: $('new-station'),
     exportBtn: $('export'),
@@ -71,6 +72,7 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
     if (storageProtected === false) text += '. This device may clear app data when short of space, so export often.';
     el.counter.textContent = text;
     el.counter.classList.toggle('warn', notExported > 0);
+    if (onStationsChanged) onStationsChanged();
   }
 
   // ---------- Map symbols ----------
@@ -508,6 +510,8 @@ export function initStations({ map, showMessage, getPosition, getDem, onPredictT
   for (const t of FEATURE_TYPES) select.append(new Option(t[0].toUpperCase() + t.slice(1), t));
 
   return {
+    /** A copy of the list of saved stations. */
+    getStations: () => stations.slice(),
     /** Loads saved stations and draws them. */
     async load(persistResult) {
       storageProtected = persistResult;

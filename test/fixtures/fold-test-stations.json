@@ -1,19 +1,113 @@
 {
   "description": "Shared test fixture: the 10 built-in TEST DATA stations (strike/dip, right-hand rule) and the known answers. S01–S08 are bedding on the two limbs of an antiform; S09 and S10 are 'other'. Reuse in stereonet tests.",
   "stations": [
-    { "stationId": "S01", "featureType": "bedding", "strike": 232, "dip": 52, "dipDirection": 322, "along": 0, "across": -600 },
-    { "stationId": "S02", "featureType": "bedding", "strike": 237, "dip": 42, "dipDirection": 327, "along": 300, "across": -450 },
-    { "stationId": "S03", "featureType": "bedding", "strike": 244, "dip": 33, "dipDirection": 334, "along": 0, "across": -300 },
-    { "stationId": "S04", "featureType": "bedding", "strike": 255, "dip": 25, "dipDirection": 345, "along": -300, "across": -150 },
-    { "stationId": "S05", "featureType": "bedding", "strike": 5, "dip": 25, "dipDirection": 95, "along": 0, "across": 150 },
-    { "stationId": "S06", "featureType": "bedding", "strike": 16, "dip": 33, "dipDirection": 106, "along": 300, "across": 300 },
-    { "stationId": "S07", "featureType": "bedding", "strike": 23, "dip": 42, "dipDirection": 113, "along": 0, "across": 450 },
-    { "stationId": "S08", "featureType": "bedding", "strike": 28, "dip": 52, "dipDirection": 118, "along": -300, "across": 600 },
-    { "stationId": "S09", "featureType": "other", "strike": 0, "dip": 0, "dipDirection": 90, "along": 0, "across": 0 },
-    { "stationId": "S10", "featureType": "other", "strike": 40, "dip": 90, "dipDirection": 130, "along": 150, "across": 0 }
+    {
+      "stationId": "S01",
+      "featureType": "bedding",
+      "strike": 232,
+      "dip": 52,
+      "dipDirection": 322,
+      "along": 0,
+      "across": -600
+    },
+    {
+      "stationId": "S02",
+      "featureType": "bedding",
+      "strike": 237,
+      "dip": 42,
+      "dipDirection": 327,
+      "along": 300,
+      "across": -450
+    },
+    {
+      "stationId": "S03",
+      "featureType": "bedding",
+      "strike": 244,
+      "dip": 33,
+      "dipDirection": 334,
+      "along": 0,
+      "across": -300
+    },
+    {
+      "stationId": "S04",
+      "featureType": "bedding",
+      "strike": 255,
+      "dip": 25,
+      "dipDirection": 345,
+      "along": -300,
+      "across": -150
+    },
+    {
+      "stationId": "S05",
+      "featureType": "bedding",
+      "strike": 5,
+      "dip": 25,
+      "dipDirection": 95,
+      "along": 0,
+      "across": 150
+    },
+    {
+      "stationId": "S06",
+      "featureType": "bedding",
+      "strike": 16,
+      "dip": 33,
+      "dipDirection": 106,
+      "along": 300,
+      "across": 300
+    },
+    {
+      "stationId": "S07",
+      "featureType": "bedding",
+      "strike": 23,
+      "dip": 42,
+      "dipDirection": 113,
+      "along": 0,
+      "across": 450
+    },
+    {
+      "stationId": "S08",
+      "featureType": "bedding",
+      "strike": 28,
+      "dip": 52,
+      "dipDirection": 118,
+      "along": -300,
+      "across": 600
+    },
+    {
+      "stationId": "S09",
+      "featureType": "other",
+      "strike": 0,
+      "dip": 0,
+      "dipDirection": 90,
+      "along": 0,
+      "across": 0
+    },
+    {
+      "stationId": "S10",
+      "featureType": "other",
+      "strike": 40,
+      "dip": 90,
+      "dipDirection": 130,
+      "along": 150,
+      "across": 0
+    }
   ],
   "expected": {
-    "foldAxisFromS01toS08": { "trend": 40, "plunge": 15, "toleranceDeg": 1 },
-    "interlimbAngleFromS01toS08": { "degrees": 80, "toleranceDeg": 2 }
+    "foldAxisFromS01toS08": {
+      "trend": 40,
+      "plunge": 15,
+      "toleranceDeg": 1
+    },
+    "interlimbOutermostFromS01toS08": {
+      "degrees": 79,
+      "toleranceDeg": 1,
+      "fleuty": "open"
+    },
+    "interlimbMeanLimbsFromS01toS08": {
+      "degrees": 110,
+      "toleranceDeg": 1,
+      "fleuty": "open"
+    },
+    "closure": "antiform (limbs dip away from the hinge; younging not recorded)"
   }
 }
