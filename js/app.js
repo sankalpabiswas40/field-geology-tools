@@ -1,4 +1,4 @@
-// Map screen: load a DEM, show its hillshade, and show where you are.
+// Map screen: load a DEM, show its hillshade, show where you are, and record field stations.
 
 import { computeHillshade } from './geo/hillshade.js';
 import { elevationAt } from './geo/raster.js';
@@ -7,6 +7,8 @@ import { toUtm } from './geo/utm.js';
 import { readDem, hillshadeToCanvas, DemError } from './dem.js';
 import { createHillshadeLayer } from './hillshade-layer.js';
 import { saveLastDem, loadLastDem, askForPersistentStorage } from './storage.js';
+import { initStations } from './stations-ui.js';
+import { initTraces } from './trace-ui.js';
 
 const SUN_AZIMUTH = 315;
 const SUN_ALTITUDE = 45;
@@ -46,6 +48,18 @@ const map = L.map('map', {
   worldCopyJump: false,
 }).setView([20, 0], 2);
 L.control.scale({ imperial: false, maxWidth: 160 }).addTo(map);
+
+// ---------- Field stations (see stations-ui.js) ----------
+
+const tracesUi = initTraces({ map, showMessage, getDem: () => dem });
+
+const stationsUi = initStations({
+  map,
+  showMessage,
+  getPosition: () => lastPosition,
+  getDem: () => dem,
+  onPredictTrace: (station) => tracesUi.predict(station),
+});
 
 // ---------- DEM loading ----------
 
@@ -100,6 +114,8 @@ async function showDem(name, buffer, { save }) {
       showMessage(`Showing your last DEM: "${name}".`, 'ok');
     }
     if (lastPosition) updateLocationReadout();
+    stationsUi.demChanged();
+    tracesUi.demChanged();
   } catch (e) {
     console.error(e);
     const text = e instanceof DemError ? e.message : `Something went wrong reading the DEM: ${e.message}`;
@@ -257,7 +273,9 @@ async function start() {
       showMessage(`Offline mode could not be set up: ${e.message}`, 'error');
     });
   }
-  askForPersistentStorage();
+  // Ask iOS not to delete our saved stations and DEM when space runs low.
+  const persisted = await askForPersistentStorage();
+  await stationsUi.load(persisted);
 
   let saved;
   try {

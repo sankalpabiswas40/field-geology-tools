@@ -23,6 +23,10 @@ keep code simple, and finish every session with a plain-language summary of what
   `<script>` tags before the app's module. Tests load proj4 from /vendor to cross-check our UTM maths.
 - The cache version lives in `sw.js` (`CACHE_VERSION`). The file list there (`APP_FILES`) must
   include every file the app uses — add new files to it.
+- /js/geo/ also holds other pure, testable code: station form checks (station.js) and the
+  CSV/GeoJSON/KML export formats (export.js). Browser-only code (forms, map, IndexedDB) lives in /js/.
+- Stations are stored in IndexedDB store "stations" (keyed by `uuid`); bump DB_VERSION in
+  storage.js and add an upgrade step if the stores change. Never delete user stations in an upgrade.
 - Exception agreed for the hillshade: slope is computed on the DEM's own geographic grid, with
   cell size converted from degrees to metres per row (longitude spacing × cos(latitude)), as
   the owner asked. Everything is converted to metres before any slope maths.

@@ -21,16 +21,113 @@
       <div class="toolbar">
         <button id="load-dem" class="btn" type="button">Load DEM</button>
         <button id="locate" class="btn" type="button">My location</button>
+        <button id="new-station" class="btn" type="button">New station</button>
+        <button id="export" class="btn secondary" type="button">Export</button>
         <input id="dem-file" type="file" hidden>
       </div>
+      <div id="station-counter" class="counter" aria-live="polite">Loading stations…</div>
       <div id="message" class="message" role="status" aria-live="polite">Starting…</div>
       <dl id="location-info" class="readout" hidden></dl>
+      <section id="trace-box" class="trace-box" hidden>
+        <h3>Predicted outcrop traces</h3>
+        <p class="prediction-warning">PREDICTION: assumes the surface is a perfect plane through the station.
+          Where the real contact does not follow the line, that is evidence of folding or faulting.</p>
+        <ul id="trace-list" class="trace-list"></ul>
+        <p class="field-note">On gentle slopes, and where a bed dips nearly parallel to the ground,
+          a small dip error moves the trace a long way. The dashed lines show how far.</p>
+        <p id="trace-clamped" class="field-note" hidden></p>
+        <div class="toolbar">
+          <button id="export-traces" class="btn secondary" type="button">Export traces (KML)</button>
+          <button id="clear-traces" class="btn secondary" type="button">Clear traces</button>
+        </div>
+      </section>
+      <details class="details">
+        <summary>Trace settings</summary>
+        <div class="settings">
+          <label class="field">Uncertainty for the dashed traces (± degrees, applied to dip and to strike)
+            <input id="trace-delta" type="text" inputmode="decimal">
+          </label>
+          <button id="trace-delta-save" class="btn secondary" type="button">Save setting</button>
+          <p id="trace-delta-note" class="field-note"></p>
+        </div>
+      </details>
       <details id="dem-details" class="details" hidden>
         <summary>DEM details</summary>
         <dl id="dem-info" class="readout"></dl>
       </details>
     </aside>
     <main id="map" class="map" aria-label="Map"></main>
+  </div>
+
+  <!-- Station form: covers the screen while open. -->
+  <div id="station-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="station-title" hidden>
+    <form id="station-form" class="sheet-body" novalidate autocomplete="off">
+      <h2 id="station-title">New station</h2>
+      <div id="form-errors" class="message error" role="alert" hidden></div>
+
+      <label class="field">Station ID
+        <input name="stationId" type="text" autocapitalize="characters" spellcheck="false">
+      </label>
+      <p id="f-datetime" class="field-note"></p>
+
+      <fieldset class="group">
+        <legend>Location (WGS84)</legend>
+        <button id="f-use-location" class="btn secondary" type="button">Use my location</button>
+        <p id="f-location-note" class="field-note"></p>
+        <div class="row">
+          <label class="field">Latitude
+            <input name="latitude" type="text" inputmode="text" spellcheck="false" placeholder="e.g. 46.544444">
+          </label>
+          <label class="field">Longitude
+            <input name="longitude" type="text" inputmode="text" spellcheck="false" placeholder="e.g. 8.083333">
+          </label>
+        </div>
+        <label class="field">GPS accuracy (± m)
+          <input name="accuracy" type="text" inputmode="decimal" placeholder="optional if typed">
+        </label>
+        <div class="field">Elevation (from DEM, read-only)
+          <output id="f-elevation" class="readonly"></output>
+        </div>
+      </fieldset>
+
+      <label class="field">Feature type
+        <select name="featureType"><option value="">Choose…</option></select>
+      </label>
+
+      <fieldset class="group">
+        <legend>Attitude (right-hand rule: the plane dips to the right of strike)</legend>
+        <div class="row">
+          <label class="field">Strike (0–360°)
+            <input name="strike" type="text" inputmode="decimal" placeholder="e.g. 045">
+          </label>
+          <label class="field">Dip (0–90°)
+            <input name="dip" type="text" inputmode="decimal" placeholder="e.g. 30">
+          </label>
+        </div>
+        <output id="f-dipdir" class="dipdir" aria-live="polite"></output>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Younging direction known?</legend>
+        <div class="segmented">
+          <label><input type="radio" name="younging" value="yes"><span>Yes</span></label>
+          <label><input type="radio" name="younging" value="no"><span>No</span></label>
+          <label><input type="radio" name="younging" value="unknown"><span>Unknown</span></label>
+        </div>
+      </fieldset>
+
+      <label class="field">Lithology
+        <input name="lithology" type="text" autocapitalize="sentences">
+      </label>
+      <label class="field">Notes
+        <textarea name="notes" rows="3" autocapitalize="sentences"></textarea>
+      </label>
+
+      <div class="sheet-actions">
+        <button id="f-cancel" class="btn secondary" type="button">Cancel</button>
+        <button class="btn" type="submit">Save station</button>
+      </div>
+    </form>
   </div>
 
   <!-- Libraries (offline copies in /vendor). They create the globals L and GeoTIFF. -->
