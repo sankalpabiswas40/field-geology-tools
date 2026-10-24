@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { equalArea, poleOfPlane, greatCircle, planePerpendicularTo, stereonetSvg } from '../js/geo/stereonet.js';
+import { equalArea, poleOfPlane, greatCircle, planePerpendicularTo, stereonetSvg, wrapText } from '../js/geo/stereonet.js';
 import { pointInPolygonXY, makeAreaTest } from '../js/geo/area.js';
 import { toUtm, fromUtm } from '../js/geo/utm.js';
 
@@ -79,4 +79,15 @@ test('point in polygon (metres) and areas drawn on the map', () => {
   assert.equal(at(510, 0), false);
   assert.equal(at(0, -600), false);
   assert.throws(() => makeAreaTest([{ lat: 1, lon: 1 }, { lat: 2, lon: 2 }]), RangeError);
+});
+
+test('long notes under the net wrap onto extra lines instead of being cut off', () => {
+  assert.deepEqual(wrapText('one two three four', 9), ['one two', 'three', 'four']);
+  assert.deepEqual(wrapText('short', 58), ['short']);
+  const long = 'WARNING: Only 2 poles: at least 6 are needed before a fold axis is reported.';
+  const svg = stereonetSvg({ title: 't', notes: [long] });
+  const texts = [...svg.matchAll(/<text x="16"[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  assert.ok(texts.length >= 2, 'wrapped');
+  assert.ok(texts.every((t) => t.length <= 58));
+  assert.equal(texts.join(' '), long);
 });

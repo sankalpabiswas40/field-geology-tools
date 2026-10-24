@@ -42,6 +42,17 @@ export function planePerpendicularTo(trend, plunge) {
   return { strike: normalizeAzimuth(dipDirection - 90), dip: 90 - plunge };
 }
 
+/** Splits text into lines of at most `max` characters, breaking between words. */
+export function wrapText(text, max) {
+  const lines = [];
+  let line = '';
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    if (line && line.length + 1 + word.length > max) { lines.push(line); line = word; } else { line = line ? `${line} ${word}` : word; }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
@@ -57,7 +68,7 @@ export function stereonetSvg(data) {
   const R = 180;
   const cx = 220;
   const cy = 262;
-  const notes = data.notes || [];
+  const notes = (data.notes || []).flatMap((line) => wrapText(line, 58));
   const height = cy + R + 50 + notes.length * 20;
   const P = (p) => ({ x: cx + p.x * R, y: cy - p.y * R });
   const f = (v) => v.toFixed(1);
